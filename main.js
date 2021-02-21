@@ -29,14 +29,13 @@ function onArchiveLoaded(archive) {
 		if (! entry.is_file) return;
 
 		entry.readData(function(data, err) {
+			var url = URL.createObjectURL(new Blob([data]));
+
 			entryList.innerHTML +=
-			'<b>Name:</b> ' + entry.name + '<br />' +
+			'<a href="' + url + '" download="' + entry.name + '">' + entry.name + '</a>' + '<br />' +
 			'<b>Compressed Size:</b> ' + entry.size_compressed + '<br />' +
 			'<b>Uncompressed Size:</b> ' + entry.size_uncompressed + '<br />' +
 			'<b>Is File:</b> ' + entry.is_file + '<br />';
-
-			var url = URL.createObjectURL(new Blob([data]));
-			entryList.innerHTML += '<a href="' + url + '">download</a>' + '<br />';
 
 			entryList.innerHTML += '<hr />';
 		});
