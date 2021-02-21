@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>盯盯拍mini5</title>
+	<script src="js/uncompress.js" type="text/javascript"></script>
+</head>
+
+<body>
+	<h1>Read an archive after downloading</h1>
+
+	<div>
+		<button id="go" disabled="true">Waiting for libraries to load ...</button>
+
+		<p>
+			<input id="download_url" type="text" style="width: 80%" value="http://files.local/1.tar" />
+		</p>
+		<p>
+			password: <input id="filePassword" type="password" />
+		</p>
+
+		<p>
+			This will list all entry data:
+		</p>
+		<div id="errorList" style="color: red;"></div>
+		<div id="entryList"></div>
+	</div>
+	<script src="main.js"></script>
+</body>
+
+</html>
