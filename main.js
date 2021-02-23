@@ -3,8 +3,7 @@
 // https://github.com/workhorsy/uncompress.js
 
 
-function httpRequest(url, method, cb, timeout) {
-	timeout = timeout || 10000;
+function httpRequest(url, method, cb, responseType) {
 	let xhr = new XMLHttpRequest();
 	xhr.onreadystatechange = function() {
 		if (this.readyState === 4) {
@@ -17,8 +16,8 @@ function httpRequest(url, method, cb, timeout) {
 		cb(null);
 	};
 	xhr.open(method, url, true);
-	xhr.timeout = timeout;
-	xhr.responseType = 'blob';
+	xhr.timeout = 50000;
+	xhr.responseType = responseType;
 	xhr.send(null);
 }
 
@@ -52,7 +51,6 @@ loadArchiveFormats(['rar', 'zip', 'tar'], function() {
 document.getElementById('go').addEventListener('click', function() {
 	var entryList = document.getElementById('entryList');
 	entryList.innerHTML = '';
-	var password = document.getElementById('filePassword').value;
 
 	var url = document.getElementById('download_url').value;
 	httpRequest(url, 'GET', function(response, status) {
@@ -62,7 +60,7 @@ document.getElementById('go').addEventListener('click', function() {
 				var array_buffer = this.result;
 
 				// Open the file as an archive
-				var archive = archiveOpenArrayBuffer("example_rar_5.rar", password, array_buffer);
+				var archive = archiveOpenArrayBuffer("1.tar", '', array_buffer);
 				if (archive) {
 					console.info('Uncompressing ' + archive.archive_type + ' ...');
 					entryList.innerHTML = '';
@@ -75,5 +73,5 @@ document.getElementById('go').addEventListener('click', function() {
 		} else {
 			console.error("Failed to download file with status: ", status);
 		}
-	});
+	}, 'blob');
 });
