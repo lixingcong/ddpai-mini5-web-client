@@ -2,7 +2,21 @@ table, th, td {
 	border: 1px solid black;
 }
 
+.btn-spacer{
+	padding: 0.2em;
+}
+
 .btn-container {
 	display:flex;
 	width: 100%;
+}
+
+#errorList{
+	color: red;
+}
+
+button#fetch-gps-file-list{
+	width: 100%;
+	min-height: 2.5em;
+	margin-bottom: 1em;
 }
