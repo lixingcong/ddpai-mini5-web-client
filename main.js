@@ -1,12 +1,13 @@
 // global vars
 var gpsFileList = undefined;
 // var serverHostUrl = 'http://files.local';
-var serverHostUrl='http://193.168.0.1';
+var serverHostUrl = 'http://193.168.0.1';
 var gpxContents = undefined;
 var gpxContentsExpectCount = 0;
 var gpxContentsCheckerTimer = undefined;
 var dateObj = new Date();
 var timestampOffset = dateObj.getTimezoneOffset() * 60000;
+var errorOccurred = false;
 
 Date.prototype.format = function (fmt) {
 	var o = {
@@ -34,12 +35,14 @@ $('#fetch-gps-file-list').click(function () {
 	entryList.empty();
 	gpsFileList = undefined;
 	$('#export-gps-merged').prop('disabled', true);
+	clearErrors();
 
-	var url = serverHostUrl + '/g.php';
-	// var url = serverHostUrl+'/cmd.cgi?cmd=API_GpsFileListReq';
+	// var url = serverHostUrl + '/g.php';
+	var url = serverHostUrl + '/cmd.cgi?cmd=API_GpsFileListReq';
 	$.ajax({
 		type: 'GET',
 		url: url,
+		timeout: 3000,
 		success: function (response) {
 			gpsFileList = API_GpsFileListReqToArray(response);
 			if (gpsFileList.length > 0) {
@@ -66,11 +69,17 @@ $('#fetch-gps-file-list').click(function () {
 				});
 				$('#export-gps-merged').prop('disabled', false);
 			} else {
-				entryList.html('GPS file list is empty!');
+				entryList.html('GPS file list from server is empty!');
 			}
 		},
 		error: function () {
-			console.error("Failed to download file with status: ", status);
+			appendError('Failed to download ' + url);
+		},
+		abort: function () {
+			appendError('Abort to download ' + url);
+		},
+		timeout: function () {
+			appendError('Timeout to download ' + url);
 		}
 	});
 });
@@ -97,6 +106,7 @@ function downloadGpsPaths(idxes) {
 				xhrFields: {
 					responseType: 'blob'
 				},
+				timeout: 3000,
 				success: function (response) {
 					var fileReader = new FileReader();
 					if (filename.endsWith('.git')) {
@@ -129,6 +139,15 @@ function downloadGpsPaths(idxes) {
 						};
 						fileReader.readAsText(response);
 					}
+				},
+				error: function () {
+					appendError('Failed to download ' + url);
+				},
+				abort: function () {
+					appendError('Abort to download ' + url);
+				},
+				timeout: function () {
+					appendError('Timeout to download ' + url);
 				}
 			});
 		});
@@ -167,6 +186,8 @@ function downloadGpsPaths(idxes) {
 						href: URL.createObjectURL(new Blob([kml]))
 					});
 					kmlFileList.append(newLink);
+				} else {
+					kmlFileList.append('轨迹KML内容为空<br/>')
 				}
 
 				// clean up
@@ -190,6 +211,19 @@ $('#export-gps-merged').click(function () {
 
 	downloadGpsPaths(idxes);
 });
+
+function appendError(s) {
+	errorList = $('#errorList');
+	if (false === errorOccurred) {
+		errorList.append('错误信息<br/>');
+		errorOccurred = true;
+	}
+	errorList.append(s + '<br/>');
+}
+
+function clearErrors() {
+	$('#errorList').empty();
+}
 
 // Load tar only
 loadArchiveFormats(['tar'], function () {
