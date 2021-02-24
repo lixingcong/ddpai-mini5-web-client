@@ -14,9 +14,3 @@ table, th, td {
 #errorList{
 	color: red;
 }
-
-button#fetch-gps-file-list{
-	width: 100%;
-	min-height: 2.5em;
-	margin-bottom: 1em;
-}

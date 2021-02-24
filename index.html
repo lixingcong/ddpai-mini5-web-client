@@ -13,23 +13,32 @@
 
 <body>
 	<div>
-		<div>
-			<button id="fetch-gps-file-list" disabled="true">正在加载JS库，请稍候</button>
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<button id="fetch-gps-file-list" disabled="true">正在加载JS库，请稍候</button>
+			</span>
+			<span class="btn-spacer">
+				<button id="fetch-gps-file-uploaded">本机获取</button>
+			</span>
+			<span class="btn-spacer">
+				<input type="file" id="fetch-gps-file-upload">
+			</span>
 		</div>
 
 		<div id="entryList"></div>
-		
+
 		<div class="btn-container">
 			<span class="btn-spacer">
 				<button id="export-gps-merged-coord">导出选中(coord)</button>
 			</span>
 			<span class="btn-spacer">
-				<button id="export-gps-merged-multicoord">导出选中(multicoord)</button>
+				<button id="export-gps-merged-multicoord" disabled="true">导出选中(multicoord)</button>
 			</span>
 		</div>
 
 		<div class="btn-container">
-			<label><input type="checkbox" id="interpolate" name="gx_interpolate" value="interpolate">启用multicoord插值</label>
+			<label><input type="checkbox" id="interpolate" name="gx_interpolate"
+					value="interpolate">启用multicoord插值</label>
 		</div>
 
 		<div id="kmlFileList"></div>
