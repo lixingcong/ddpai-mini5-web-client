@@ -1,7 +1,7 @@
 // global vars
 var gpsFileList = undefined;
-var serverHostUrl = 'http://files.local';
-// var serverHostUrl='http://193.168.0.1';
+// var serverHostUrl = 'http://files.local';
+var serverHostUrl='http://193.168.0.1';
 var gpxContents = undefined;
 var gpxContentsExpectCount = 0;
 var gpxContentsCheckerTimer = undefined;
