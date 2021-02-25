@@ -18,31 +18,35 @@
 				<button id="fetch-gps-file-list" disabled="true">正在加载JS库，请稍候</button>
 			</span>
 			<span class="btn-spacer">
-				<button id="fetch-gps-file-uploaded">本机获取</button>
+				<button id="export-gps-selected">下载所选</button>
+			</span>
+		</div>
+
+		<div id="entryList"></div>
+
+		<div class="btn-container" style="display: none;">
+			<span class="btn-spacer">
+				<label><input type="checkbox" id="multicoord" name="gx_multicoord"
+					value="multicoord">多轨模式</label>
+			</span>
+			<span class="btn-spacer">
+				<label><input type="checkbox" id="interpolate" name="gx_interpolate"
+					value="interpolate">多轨插值</label>
+			</span>
+		</div>
+
+		<div id="kmlFileList"></div>
+		<div id="infoList"></div>
+
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<button id="fetch-gps-file-uploaded">从本机获取</button>
 			</span>
 			<span class="btn-spacer">
 				<input type="file" id="fetch-gps-file-upload">
 			</span>
 		</div>
 
-		<div id="entryList"></div>
-
-		<div class="btn-container">
-			<span class="btn-spacer">
-				<button id="export-gps-merged-coord">导出选中(coord)</button>
-			</span>
-			<span class="btn-spacer">
-				<button id="export-gps-merged-multicoord" disabled="true">导出选中(multicoord)</button>
-			</span>
-		</div>
-
-		<div class="btn-container">
-			<label><input type="checkbox" id="interpolate" name="gx_interpolate"
-					value="interpolate">启用multicoord插值</label>
-		</div>
-
-		<div id="kmlFileList"></div>
-		<div id="infoList"></div>
 		<div id="errorList"></div>
 	</div>
 	<script src="kml.js" type="text/javascript" charset="UTF-8"></script>

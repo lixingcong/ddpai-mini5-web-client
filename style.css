@@ -2,6 +2,11 @@ table, th, td {
 	border: 1px solid black;
 }
 
+td {
+    padding-left: 0.2em;
+	padding-right: 0.2em;
+}
+
 .btn-spacer{
 	padding: 0.2em;
 }

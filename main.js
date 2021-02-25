@@ -1,18 +1,22 @@
 "use strict"
 
 // global vars
-var gpsFileList = undefined;
 // var serverHostUrl = 'http://files.local';
 var serverHostUrl = 'http://193.168.0.1';
+var serverAjaxTimeout = 10000;
+
+var gpsFileListReq = undefined;
 var gpxContents = undefined;
 var gpxContentsExpectCount = 0;
-var gpxHttpPendingCount = 0;
 var gpxContentsCheckerTimer = undefined;
+var gpxHttpPendingFilenames = undefined;
+
 var dateObj = new Date();
 var timestampOffset = dateObj.getTimezoneOffset() * 60000;
 var errorOccurred = false;
-var tableMulitselStatus = true;
+var tableMulitselStatus = false;
 var costTimestampBegin = 0;
+var infoCounter = 0;
 
 Date.prototype.format = function (fmt) {
 	// https://blog.scottchayaa.com/post/2019/05/27/javascript_date_memo
@@ -39,15 +43,17 @@ function timestampToString(ts, fmt, offset) {
 function appendGpxContentsFromArrayBuffer(filename, arrayBuffer) {
 	var archive = archiveOpenArrayBuffer(filename, '', arrayBuffer);
 	if (archive) {
-		var archiveEntryCount = archive.entries.length;
-		gpxContentsExpectCount += archiveEntryCount;
 		archive.entries.forEach(function (entry) {
-			if (!entry.is_file) return;;
+			if (!entry.is_file) return;
+			gpxContentsExpectCount++;
 			entry.readData(function (data) {
 				var arrayBufReader = new FileReader();
 				arrayBufReader.onload = function () {
 					var sortKey = parseInt(entry.name.split('_')[0].substr(4));
 					gpxContents.push([sortKey, this.result]);
+				};
+				arrayBufReader.onerror = function () {
+					gpxContentsExpectCount--;
 				};
 				arrayBufReader.readAsText(new Blob([data]));
 			});
@@ -55,12 +61,20 @@ function appendGpxContentsFromArrayBuffer(filename, arrayBuffer) {
 	}
 }
 
+function killGpxContentsCheckerTimer() {
+	clearInterval(gpxContentsCheckerTimer);
+	gpxContentsCheckerTimer = undefined;
+}
+
 function checkGpxConetentUseTimer() {
+	infoCounter = 0;
 	gpxContentsCheckerTimer = setInterval(function () {
 		var infoList = $('#infoList');
 
-		infoList.append('工作中...轨迹文件数(' + gpxContents.length + '/' + gpxContentsExpectCount + '), 剩余HTTP请求' + gpxHttpPendingCount + '<br/>');
-		if (gpxHttpPendingCount === 0 && gpxContentsExpectCount <= gpxContents.length) {
+		infoList.html('#' + (++infoCounter) + ' 轨迹文件数(' + gpxContents.length + '/' + gpxContentsExpectCount + '), 剩余HTTP请求' + gpxHttpPendingFilenames.length + '<br/>');
+		if (gpxHttpPendingFilenames.length === 0 && gpxContentsExpectCount <= gpxContents.length) {
+			killGpxContentsCheckerTimer();
+
 			gpxContents.sort(function (a, b) {
 				return a[0] > b[0] ? 1 : -1;
 			});
@@ -75,11 +89,14 @@ function checkGpxConetentUseTimer() {
 			var pathDictKeys = [];
 			var g;
 			Object.keys(pathDict).forEach(k => {
-				g = pathDict[k];
-				if (('lat' in g) && ('lon' in g))
-					pathDictKeys.push(k);
+				if (!isNaN(+k)) {
+					g = pathDict[k];
+					if (('lat' in g) && ('lon' in g))
+						pathDictKeys.push(k);
+				}
 			});
 
+			var kmlFileList = $('#kmlFileList');
 			var pointCount = pathDictKeys.length
 			if (pointCount > 0) {
 				pathDictKeys = pathDictKeys.sort();
@@ -109,7 +126,7 @@ function checkGpxConetentUseTimer() {
 					filename += '到' + tsToStr;
 
 					var gpsAtTsTo = pathDict[tsTo];
-					kmlPlaceMarks = kmlPlacemarkHead('终点', tsToStr) + kmlPlacemarkPoint(gpsAtTsTo['lat'], gpsAtTsTo['lon'], 6) + kmlPlacemarkTail();
+					kmlPlaceMarks += kmlPlacemarkHead('终点', tsToStr) + kmlPlacemarkPoint(gpsAtTsTo['lat'], gpsAtTsTo['lon'], 6) + kmlPlacemarkTail();
 				}
 				var kml = kmlHead(filename, '文件夹') + kmlPlaceMarks + kmlCoords + kmlTail();
 				//console.log(kml);
@@ -121,17 +138,19 @@ function checkGpxConetentUseTimer() {
 					download: filename,
 					href: URL.createObjectURL(blob)
 				});
-				var kmlFileList = $('#kmlFileList');
+
 				kmlFileList.append(newLink);
 				kmlFileList.append('<br/>文件大小' + blob.size + '字节，点位数量' + pointCount);
-			} else {
-				kmlFileList.append('轨迹KML内容为空<br/>');
-			}
 
-			// clean up
-			clearInterval(gpxContentsCheckerTimer);
-			gpxContentsCheckerTimer = undefined;
-			gpxContents = undefined;
+				gpxContents = undefined; // clean up
+			} else {
+				kmlFileList.append($('<a>', {
+					text: '轨迹KML内容为空',
+					download: filename,
+					href: 'javascript:void(0);'
+				}));
+				kmlFileList.append('<br/>')
+			}
 
 			var costTimestampEnd = (new Date()).getTime();
 			infoList.append('处理完成，总耗时 ' + (costTimestampEnd - costTimestampBegin) + 'ms<br/>');
@@ -142,32 +161,36 @@ function checkGpxConetentUseTimer() {
 $('#fetch-gps-file-list').click(function () {
 	var entryList = $('#entryList');
 	entryList.empty();
-	gpsFileList = undefined;
+	gpsFileListReq = undefined;
 	clearErrors();
-	tableMulitselStatus = true;
+	tableMulitselStatus = false;
 
 	// var url = serverHostUrl + '/g.php';
 	var url = serverHostUrl + '/cmd.cgi?cmd=API_GpsFileListReq';
 	$.ajax({
 		type: 'GET',
 		url: url,
-		timeout: 3000,
+		timeout: serverAjaxTimeout,
 		success: function (response) {
-			gpsFileList = API_GpsFileListReqToArray(response);
-			if (gpsFileList.length > 0) {
+			gpsFileListReq = API_GpsFileListReqToArray(response);
+			if (gpsFileListReq.length > 0) {
 				var fmt = 'MM月dd日 hh:mm';
 				var innerHtml = '<table>\n';
 				var multiSelect = '<a href="javascript:void(0)" id="table-multiselect-href">多选</a>';
-				innerHtml += '<thead><tr><th>单选</th><th>' + multiSelect + '</th><th>时间段</th><th>git</th><th>gpx</th></tr></thead>\n';
+				innerHtml += '<thead><tr><th>轨迹时间 URL</th><th>git</th><th>gpx</th><th>' + multiSelect + '</th><th>单选</th></tr></thead>\n';
 				innerHtml += '<tbody>\n';
 				var row = 0;
-				var from, to, button, checkBox;
-				gpsFileList.forEach(g => {
+				var from, fromHref, to, button, checkBox, gitCount, gpxCount;
+				gpsFileListReq.forEach(g => {
 					from = timestampToString(g['from'], fmt, timestampOffset);
 					to = timestampToString(g['to'], fmt, timestampOffset);
+					gitCount = g['git'];
+					gpxCount = g['gpx'];
+
+					fromHref = '<a href="javascript:copyUrls(' + row + ')">' + from + '</a>';
 					button = '<button class="btn-download-single" value="' + row + '">下载</button>';
-					checkBox = '<label><input type="checkbox" value="' + row + '" name="history-select">选择</label>';
-					innerHtml += '<tr><td>' + button + '</td><td>' + checkBox + '</td>' + '<td>' + from + '<br/>' + to + '</td>' + '<td>' + g['git'] + '</td>' + '<td>' + g['gpx'] + '</td></tr>\n';
+					checkBox = '<label><input type="checkbox" value="' + row + '" name="history-select" checked="true">选择</label>';
+					innerHtml += '<tr><td>' + fromHref + '<br/>' + to + '</td>' + '<td>' + (gitCount > 0 ? gitCount : '') + '</td>' + '<td>' + (gpxCount > 0 ? gpxCount : '') + '</td><td>' + checkBox + '</td><td>' + button + '</td></tr>\n';
 					row++;
 				});
 				innerHtml += '</tbody>\n';
@@ -190,10 +213,10 @@ $('#fetch-gps-file-list').click(function () {
 			}
 		},
 		error: function () {
-			appendError('Failed to download ' + url);
+			appendError('Failed to download ' + this.url);
 		},
 		abort: function () {
-			appendError('Abort to download ' + url);
+			appendError('Abort to download ' + this.url);
 		}
 	});
 });
@@ -206,11 +229,54 @@ function beforeDownloadGpsPaths() {
 
 	gpxContents = new Array();
 	gpxContentsExpectCount = 0;
-	gpxHttpPendingCount = 0;
+	gpxHttpPendingFilenames = new Array();
 	costTimestampBegin = (new Date()).getTime();
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	$('#errorList').empty();
+}
+
+function beginDownloadGpsPath() {
+	if (gpxHttpPendingFilenames.length > 0) {
+		var filename = gpxHttpPendingFilenames.pop();
+		$.ajax({
+			type: 'GET',
+			url: serverHostUrl + '/' + filename,
+			xhrFields: {
+				responseType: 'blob'
+			},
+			timeout: serverAjaxTimeout,
+			success: function (response) {
+				var fileReader = new FileReader();
+				if (filename.endsWith('.git')) {
+					// tar file
+					fileReader.onload = function () {
+						appendGpxContentsFromArrayBuffer(filename, this.result);
+					};
+					fileReader.readAsArrayBuffer(response);
+				} else {
+					gpxContentsExpectCount++;
+					fileReader.onload = function () {
+						var sortKey = parseInt(filename.split('_')[0].substr(4));
+						gpxContents.push([sortKey, this.result]);
+					};
+					fileReader.onerror = function () {
+						gpxContentsExpectCount--;
+					};
+					fileReader.readAsText(response);
+				}
+			},
+			error: function () {
+				appendError('Failed to download ' + this.url);
+			},
+			abort: function () {
+				appendError('Abort to download ' + this.url);
+			},
+			complete: function () {
+				beginDownloadGpsPath(); // 继续下载另一个URL
+			}
+		});
+	}
 }
 
 // 参数idxes为整数的数组
@@ -218,53 +284,20 @@ function downloadGpsPaths(idxes) {
 	beforeDownloadGpsPaths();
 
 	idxes.forEach(idx => {
-		var g = gpsFileList[idx];
+		var g = gpsFileListReq[idx];
 		g['filename'].forEach(filename => {
-			var url = serverHostUrl + '/' + filename;
-			gpxHttpPendingCount++;
-			$.ajax({
-				type: 'GET',
-				url: url,
-				xhrFields: {
-					responseType: 'blob'
-				},
-				timeout: 3000,
-				success: function (response) {
-					var fileReader = new FileReader();
-					if (filename.endsWith('.git')) {
-						// tar file
-						fileReader.onload = function () {
-							appendGpxContentsFromArrayBuffer(filename, this.result);
-						};
-						fileReader.readAsArrayBuffer(response);
-					} else {
-						gpxContentsExpectCount++;
-						fileReader.onload = function () {
-							var sortKey = parseInt(filename.split('_')[0].substr(4));
-							gpxContents.push([sortKey, this.result]);
-						};
-						fileReader.readAsText(response);
-					}
-				},
-				error: function () {
-					appendError('Failed to download ' + url);
-				},
-				abort: function () {
-					appendError('Abort to download ' + url);
-				},
-				complete: function () {
-					//await sleep(2000);
-					gpxHttpPendingCount--;
-				}
-			});
+			gpxHttpPendingFilenames.push(filename);
 		});
 	});
 
-	if (idxes.length > 0)
-		checkGpxConetentUseTimer();
+	if (idxes.length > 0) {
+		checkGpxConetentUseTimer(); // 此步骤须早于执行ajax
+		for (var i = 0; i < 4; ++i) // 限制下载连接数
+			beginDownloadGpsPath();
+	}
 }
 
-$('#export-gps-merged-coord').click(function () {
+$('#export-gps-selected').click(function () {
 	var checkedBoxes = $("input[name='history-select']:checked");
 	var idxes = new Array();
 
@@ -273,11 +306,6 @@ $('#export-gps-merged-coord').click(function () {
 	});
 
 	downloadGpsPaths(idxes);
-});
-
-$('#export-gps-merged-multicoord').click(function () {
-	var interpolate = $('#interpolate:checkbox:checked').length > 0;
-	alert('暂未实现! interpolate=' + interpolate);
 });
 
 $('#fetch-gps-file-uploaded').click(function () {
@@ -324,8 +352,34 @@ function clearErrors() {
 	errorOccurred = false;
 }
 
+function copyUrls(row) {
+	var text2copy = '';
+	var lineCount = 0;
+	gpsFileListReq[row]['filename'].forEach(filename => {
+		text2copy += serverHostUrl + '/' + filename + '\n';
+		++lineCount;
+	});
+
+	if (lineCount > 0) {
+		if (!navigator.clipboard) {
+			// use old commandExec() way
+			var $temp = $("<textarea>"); // use textArea instead of input
+			$("body").append($temp);
+			$temp.val(text2copy).select();
+			document.execCommand("copy");
+			$temp.remove();
+		} else {
+			navigator.clipboard.writeText(text2copy);
+		}
+
+		alert('已经拷贝' + lineCount + '条URL到剪贴板！');
+	}
+}
+
 loadArchiveFormats(['tar', 'rar', 'zip'], function () {
 	var button = $('#fetch-gps-file-list');
-	button.html("服务器获取");
+	button.html("从记录仪获取");
 	button.prop('disabled', false);
 });
+
+// var interpolate = $('#interpolate:checkbox:checked').length > 0;
