@@ -19,3 +19,7 @@ td {
 #errorList{
 	color: red;
 }
+input[type="range"]{
+	overflow: hidden;
+	min-width: 18em;
+}

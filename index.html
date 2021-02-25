@@ -26,12 +26,25 @@
 
 		<div class="btn-container" style="display: none;">
 			<span class="btn-spacer">
-				<label><input type="checkbox" id="multicoord" name="gx_multicoord"
-					value="multicoord">多轨模式</label>
+				<label><input type="checkbox" id="multicoord" name="gx_multicoord" >多轨模式</label>
 			</span>
 			<span class="btn-spacer">
-				<label><input type="checkbox" id="interpolate" name="gx_interpolate"
-					value="interpolate">多轨插值</label>
+				<label><input type="checkbox" id="interpolate" name="gx_interpolate" >多轨插值</label>
+			</span>
+		</div>
+
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<label>分割时长阈值：</label><label id="split-path-threshold-text">无 </label>
+			</span>
+			<span class="btn-spacer" id="split-into-multi-kml-span" style="display: none;">
+				<input type="checkbox" id="split-into-multi-kml" name="split-into-multi-kml" >多KML</label>
+			</span>
+		</div>
+
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<input type="range" id="split-path-threshold" name="split-path-threshold" value="0" min="0" max="1000">
 			</span>
 		</div>
 

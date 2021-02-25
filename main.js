@@ -3,12 +3,11 @@
 // global vars
 // var serverHostUrl = 'http://files.local';
 var serverHostUrl = 'http://193.168.0.1';
-var serverAjaxTimeout = 10000;
+var serverAjaxTimeout = 3000;
 
 var gpsFileListReq = undefined;
 var gpxContents = undefined;
 var gpxContentsExpectCount = 0;
-var gpxContentsCheckerTimer = undefined;
 var gpxHttpPendingFilenames = undefined;
 
 var dateObj = new Date();
@@ -40,122 +39,61 @@ function timestampToString(ts, fmt, offset) {
 	return dateObj.format(fmt);
 }
 
+function decreaseGpxContentsExpectCount() {
+	--gpxContentsExpectCount;
+}
+
+function secondToHumanReadableString(second) {
+	if (second < 60)
+		return second + 's';
+	if (second < 3600)
+		return Math.trunc(second / 60) + 'm';
+	if (second < 86400)
+		return (second / 3600).toFixed(1) + 'h';
+	return (second / 86400).toFixed(1) + 'd';
+}
+
+function byteToHumanReadableSize(bytes) {
+	var sizes = ['B', 'K', 'M', 'G', 'T'];
+	if (bytes == 0) return '0B';
+	var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+	return (bytes / Math.pow(1024, i)).toFixed(1) + sizes[i];
+}
+
 function appendGpxContentsFromArrayBuffer(filename, arrayBuffer) {
 	var archive = archiveOpenArrayBuffer(filename, '', arrayBuffer);
 	if (archive) {
-		archive.entries.forEach(function (entry) {
-			if (!entry.is_file) return;
-			gpxContentsExpectCount++;
+		let entryCount = archive.entries.length;
+		for (let i = 0; i < entryCount; ++i) {
+			let entry = archive.entries[i];
+			if (!entry.is_file)
+				continue;
+			++gpxContentsExpectCount;
 			entry.readData(function (data) {
 				var arrayBufReader = new FileReader();
 				arrayBufReader.onload = function () {
 					var sortKey = parseInt(entry.name.split('_')[0].substr(4));
+					// console.log('push ' + entry.name);
 					gpxContents.push([sortKey, this.result]);
+					if (i + 1 === entryCount)
+						decreaseGpxContentsExpectCount(); // last one
+					endAppendGpxContents();
 				};
 				arrayBufReader.onerror = function () {
-					gpxContentsExpectCount--;
+					decreaseGpxContentsExpectCount();
+					if (i + 1 === entryCount)
+						decreaseGpxContentsExpectCount(); // last one
+				};
+				arrayBufReader.onabort = function () {
+					decreaseGpxContentsExpectCount();
+					if (i + 1 === entryCount)
+						decreaseGpxContentsExpectCount(); // last one
 				};
 				arrayBufReader.readAsText(new Blob([data]));
 			});
-		});
-	}
-}
-
-function killGpxContentsCheckerTimer() {
-	clearInterval(gpxContentsCheckerTimer);
-	gpxContentsCheckerTimer = undefined;
-}
-
-function checkGpxConetentUseTimer() {
-	infoCounter = 0;
-	gpxContentsCheckerTimer = setInterval(function () {
-		var infoList = $('#infoList');
-
-		infoList.html('#' + (++infoCounter) + ' 轨迹文件数(' + gpxContents.length + '/' + gpxContentsExpectCount + '), 剩余HTTP请求' + gpxHttpPendingFilenames.length + '<br/>');
-		if (gpxHttpPendingFilenames.length === 0 && gpxContentsExpectCount <= gpxContents.length) {
-			killGpxContentsCheckerTimer();
-
-			gpxContents.sort(function (a, b) {
-				return a[0] > b[0] ? 1 : -1;
-			});
-
-			var pathDict = {};
-			var convertedDict;
-			gpxContents.forEach(gpx => {
-				convertedDict = gpxToPathDict(gpx[1], 150, '\n');
-				pathDict = Object.assign({}, pathDict, convertedDict);
-			});
-
-			var pathDictKeys = [];
-			var g;
-			Object.keys(pathDict).forEach(k => {
-				if (!isNaN(+k)) {
-					g = pathDict[k];
-					if (('lat' in g) && ('lon' in g))
-						pathDictKeys.push(k);
-				}
-			});
-
-			var kmlFileList = $('#kmlFileList');
-			var pointCount = pathDictKeys.length
-			if (pointCount > 0) {
-				pathDictKeys = pathDictKeys.sort();
-
-				var altitude;
-				var kmlCoords = kmlPlacemarkHead('轨迹', '盯盯拍导出') + kmlTrackHead();
-				var timeStr;
-				pathDictKeys.forEach(k => {
-					g = pathDict[k];
-					altitude = 0;
-					if ('altitude' in g)
-						altitude = g['altitude'];
-					timeStr = timestampToString(k, 'yyyy-MM-ddThh:mm:ssZ', timestampOffset);
-					kmlCoords += kmlTrackCoord(g['lat'], g['lon'], altitude, 6, timeStr);
-				});
-				kmlCoords += kmlTrackTail() + kmlPlacemarkTail();
-
-				var fmt = 'MM月dd日hh时mm分'
-				var tsFrom = pathDictKeys[0];
-				var tsFromStr = timestampToString(tsFrom, fmt, 0);
-				var gpsAtTsFrom = pathDict[tsFrom];
-				var filename = '轨迹' + tsFromStr;
-				var kmlPlaceMarks = kmlPlacemarkHead('起点', tsFromStr) + kmlPlacemarkPoint(gpsAtTsFrom['lat'], gpsAtTsFrom['lon'], 6) + kmlPlacemarkTail();
-				if (pathDictKeys.length > 1) {
-					var tsTo = pathDictKeys[pathDictKeys.length - 1];
-					var tsToStr = timestampToString(tsTo, fmt, 0);
-					filename += '到' + tsToStr;
-
-					var gpsAtTsTo = pathDict[tsTo];
-					kmlPlaceMarks += kmlPlacemarkHead('终点', tsToStr) + kmlPlacemarkPoint(gpsAtTsTo['lat'], gpsAtTsTo['lon'], 6) + kmlPlacemarkTail();
-				}
-				var kml = kmlHead(filename, '文件夹') + kmlPlaceMarks + kmlCoords + kmlTail();
-				//console.log(kml);
-
-				filename += '.kml';
-				var blob = new Blob([kml]);
-				var newLink = $('<a>', {
-					text: filename,
-					download: filename,
-					href: URL.createObjectURL(blob)
-				});
-
-				kmlFileList.append(newLink);
-				kmlFileList.append('<br/>文件大小' + blob.size + '字节，点位数量' + pointCount);
-
-				gpxContents = undefined; // clean up
-			} else {
-				kmlFileList.append($('<a>', {
-					text: '轨迹KML内容为空',
-					download: filename,
-					href: 'javascript:void(0);'
-				}));
-				kmlFileList.append('<br/>')
-			}
-
-			var costTimestampEnd = (new Date()).getTime();
-			infoList.append('处理完成，总耗时 ' + (costTimestampEnd - costTimestampBegin) + 'ms<br/>');
 		}
-	}, 100);
+	} else
+		decreaseGpxContentsExpectCount(); // restore from downloadGpsPaths(idxes)
 }
 
 $('#fetch-gps-file-list').click(function () {
@@ -177,20 +115,23 @@ $('#fetch-gps-file-list').click(function () {
 				var fmt = 'MM月dd日 hh:mm';
 				var innerHtml = '<table>\n';
 				var multiSelect = '<a href="javascript:void(0)" id="table-multiselect-href">多选</a>';
-				innerHtml += '<thead><tr><th>轨迹时间 URL</th><th>git</th><th>gpx</th><th>' + multiSelect + '</th><th>单选</th></tr></thead>\n';
+				innerHtml += '<thead><tr><th>轨迹时间 URL</th><th>时长</th><th>git</th><th>gpx</th><th>' + multiSelect + '</th><th>单选</th></tr></thead>\n';
 				innerHtml += '<tbody>\n';
 				var row = 0;
-				var from, fromHref, to, button, checkBox, gitCount, gpxCount;
+				var from, fromHref, to, duration, button, checkBox, gitCount, gpxCount;
 				gpsFileListReq.forEach(g => {
-					from = timestampToString(g['from'], fmt, timestampOffset);
-					to = timestampToString(g['to'], fmt, timestampOffset);
+					from = g['from'];
+					to = g['to'];
+					duration = secondToHumanReadableString(to - from);
+					from = timestampToString(from, fmt, timestampOffset);
+					to = timestampToString(to, fmt, timestampOffset);
 					gitCount = g['git'];
 					gpxCount = g['gpx'];
 
 					fromHref = '<a href="javascript:copyUrls(' + row + ')">' + from + '</a>';
 					button = '<button class="btn-download-single" value="' + row + '">下载</button>';
 					checkBox = '<label><input type="checkbox" value="' + row + '" name="history-select" checked="true">选择</label>';
-					innerHtml += '<tr><td>' + fromHref + '<br/>' + to + '</td>' + '<td>' + (gitCount > 0 ? gitCount : '') + '</td>' + '<td>' + (gpxCount > 0 ? gpxCount : '') + '</td><td>' + checkBox + '</td><td>' + button + '</td></tr>\n';
+					innerHtml += '<tr><td>' + fromHref + '<br/>' + to + '</td><td>' + duration + '</td><td>' + (gitCount > 0 ? gitCount : '') + '</td>' + '<td>' + (gpxCount > 0 ? gpxCount : '') + '</td><td>' + checkBox + '</td><td>' + button + '</td></tr>\n';
 					row++;
 				});
 				innerHtml += '</tbody>\n';
@@ -222,13 +163,9 @@ $('#fetch-gps-file-list').click(function () {
 });
 
 function beforeDownloadGpsPaths() {
-	if (gpxContentsCheckerTimer !== undefined) {
-		clearInterval(gpxContentsCheckerTimer);
-		gpxContentsCheckerTimer = undefined;
-	}
-
 	gpxContents = new Array();
 	gpxContentsExpectCount = 0;
+	infoCounter = 0;
 	gpxHttpPendingFilenames = new Array();
 	costTimestampBegin = (new Date()).getTime();
 	$('#kmlFileList').empty();
@@ -254,15 +191,15 @@ function beginDownloadGpsPath() {
 						appendGpxContentsFromArrayBuffer(filename, this.result);
 					};
 					fileReader.readAsArrayBuffer(response);
-				} else {
-					gpxContentsExpectCount++;
+				} else if (filename.endsWith('.gpx')) {
 					fileReader.onload = function () {
 						var sortKey = parseInt(filename.split('_')[0].substr(4));
+						// console.log('push raw ' + filename);
 						gpxContents.push([sortKey, this.result]);
+						endAppendGpxContents();
 					};
-					fileReader.onerror = function () {
-						gpxContentsExpectCount--;
-					};
+					fileReader.onerror = decreaseGpxContentsExpectCount
+					fileReader.onabort = decreaseGpxContentsExpectCount;
 					fileReader.readAsText(response);
 				}
 			},
@@ -279,6 +216,151 @@ function beginDownloadGpsPath() {
 	}
 }
 
+function endAppendGpxContents() {
+	if (0 >= gpxContentsExpectCount)
+		return;
+
+	var infoList = $('#infoList');
+
+	infoList.html('#' + (++infoCounter) + ' 轨迹文件数(' + gpxContents.length + '/' + gpxContentsExpectCount + '), 剩余HTTP请求' + gpxHttpPendingFilenames.length + '<br/>');
+	if (gpxHttpPendingFilenames.length === 0 && gpxContentsExpectCount <= gpxContents.length) {
+		gpxContents.sort(function (a, b) {
+			return a[0] > b[0] ? 1 : -1;
+		});
+
+		var pathDict = {};
+		var convertedDict;
+		gpxContents.forEach(gpx => {
+			convertedDict = gpxToPathDict(gpx[1], 150, '\n');
+			pathDict = Object.assign({}, pathDict, convertedDict);
+		});
+
+		var pathDictKeys = [];
+		var g;
+		Object.keys(pathDict).forEach(k => {
+			if (!isNaN(+k)) {
+				g = pathDict[k];
+				if (('lat' in g) && ('lon' in g))
+					pathDictKeys.push(k);
+			}
+		});
+
+		var kmlFileList = $('#kmlFileList');
+		var pointCount = pathDictKeys.length
+		if (pointCount > 0) {
+			// 分割
+			var pathDictKeysGrouped = [];
+			pathDictKeys = pathDictKeys.sort();
+			var splitPathThreshold = splitPathThresholdSecond();; // s
+			var splitToMultiKml = false;
+			if (splitPathThreshold < 1)
+				pathDictKeysGrouped = [pathDictKeys];
+			else {
+				var lastTimestamp = 0;
+				var lastGroup = undefined;
+				splitToMultiKml = $('#split-into-multi-kml:checkbox:checked').length > 0;
+				pathDictKeys.forEach(timestamp => {
+					if (timestamp - lastTimestamp > splitPathThreshold) {
+						lastGroup = new Array();
+						pathDictKeysGrouped.push(lastGroup);
+					}
+					lastGroup.push(timestamp);
+					lastTimestamp = timestamp;
+				});
+			}
+
+			// console.log(pathDictKeysGrouped);
+
+			function kmlGroupContent(pathDict, pathDictKeys, index) {
+				var altitude;
+				var kml = kmlPlacemarkHead('轨迹' + index, '盯盯拍导出') + kmlTrackHead();
+				var timeStr;
+				pathDictKeys.forEach(timestamp => {
+					g = pathDict[timestamp];
+					altitude = 0;
+					if ('altitude' in g)
+						altitude = g['altitude'];
+					timeStr = timestampToString(timestamp, 'yyyy-MM-ddThh:mm:ssZ', timestampOffset);
+					kml += kmlTrackCoord(g['lat'], g['lon'], altitude, 6, timeStr);
+				});
+				kml += kmlTrackTail() + kmlPlacemarkTail();
+
+				var fmt = 'MM月dd日hh时mm分'
+				var tsFrom = pathDictKeys[0];
+				var tsFromStr = timestampToString(tsFrom, fmt, 0);
+				var gpsAtTsFrom = pathDict[tsFrom];
+				var filename = '轨迹' + index + ' ' + tsFromStr;
+				kml += kmlPlacemarkHead('起点' + index, tsFromStr) + kmlPlacemarkPoint(gpsAtTsFrom['lat'], gpsAtTsFrom['lon'], 6) + kmlPlacemarkTail();
+				var duration = '';
+				if (pathDictKeys.length > 1) {
+					var tsTo = pathDictKeys[pathDictKeys.length - 1];
+					var tsToStr = timestampToString(tsTo, fmt, 0);
+					filename += '到' + tsToStr;
+					duration = '，轨迹持续' + secondToHumanReadableString(tsTo - tsFrom);
+
+					var gpsAtTsTo = pathDict[tsTo];
+					kml += kmlPlacemarkHead('终点' + index, tsToStr) + kmlPlacemarkPoint(gpsAtTsTo['lat'], gpsAtTsTo['lon'], 6) + kmlPlacemarkTail();
+				}
+
+				return { 'kml': kml, 'filename': filename, 'duration': duration, 'pointCount': pathDictKeys.length };
+			}
+			var kmlGroupContents = [];
+			var kmlGroupContentIndex = 0;
+			pathDictKeysGrouped.forEach(keys => {
+				kmlGroupContents.push(kmlGroupContent(pathDict, keys, ++kmlGroupContentIndex));
+			});
+
+			function appendKmlResult(kmlContent, filename, pointCount, duration) {
+				filename += '.kml';
+				var blob = new Blob([kmlContent]);
+				var newLink = $('<a>', {
+					text: filename,
+					download: filename,
+					href: URL.createObjectURL(blob)
+				});
+
+				kmlFileList.append(newLink);
+				kmlFileList.append('<br/>文件大小' + byteToHumanReadableSize(blob.size) + '，点位数量' + pointCount + duration + '<br/>');
+			}
+
+			if (splitToMultiKml) {
+				let kml = undefined;
+				let filename = undefined;
+				kmlGroupContents.forEach(g => {
+					filename = g['filename'];
+					kml = kmlHead(filename, '文件夹') + g['kml'] + kmlTail();
+					appendKmlResult(kml, filename, g['pointCount'], g['duration']);
+				});
+			} else {
+				var filename = '轨迹-' + timestampToString(pathDictKeys[0], 'MM月dd日hh时mm分', timestampOffset);
+				var kml = kmlHead(filename, '文件夹');
+				kmlGroupContents.forEach(kmlGroupContent => {
+					kml += kmlGroupContent['kml'];
+				});
+				kml += kmlTail();
+				var pointCount = pathDictKeys.length;
+				var duration = '';
+				if (pointCount > 1)
+					duration = '，轨迹持续' + secondToHumanReadableString(pathDictKeys[pointCount - 1] - pathDictKeys[0]);
+				appendKmlResult(kml, filename, pointCount, duration);
+			}
+
+			// console.log('delete all gpxContents');
+			gpxContents = undefined; // clean up
+		} else {
+			kmlFileList.append($('<a>', {
+				text: '轨迹KML内容为空',
+				download: filename,
+				href: 'javascript:void(0);'
+			}));
+			kmlFileList.append('<br/>')
+		}
+
+		var costTimestampEnd = (new Date()).getTime();
+		infoList.append('处理完成，总耗时 ' + (costTimestampEnd - costTimestampBegin) + 'ms<br/>');
+	}
+}
+
 // 参数idxes为整数的数组
 function downloadGpsPaths(idxes) {
 	beforeDownloadGpsPaths();
@@ -287,11 +369,11 @@ function downloadGpsPaths(idxes) {
 		var g = gpsFileListReq[idx];
 		g['filename'].forEach(filename => {
 			gpxHttpPendingFilenames.push(filename);
+			++gpxContentsExpectCount; // gpx+git文件期望个数，须预先在这里设置好
 		});
 	});
 
 	if (idxes.length > 0) {
-		checkGpxConetentUseTimer(); // 此步骤须早于执行ajax
 		for (var i = 0; i < 4; ++i) // 限制下载连接数
 			beginDownloadGpsPath();
 	}
@@ -310,16 +392,17 @@ $('#export-gps-selected').click(function () {
 
 $('#fetch-gps-file-uploaded').click(function () {
 	var file = $("#fetch-gps-file-upload")[0].files[0];
-	//console.log(file);
-	var filename = file.name;
-	$('#entryList').empty();
-	var fileReader = new FileReader();
-	fileReader.onload = function () {
-		beforeDownloadGpsPaths();
-		appendGpxContentsFromArrayBuffer(filename, this.result);
-		checkGpxConetentUseTimer();
-	};
-	fileReader.readAsArrayBuffer(file);
+	if (file) {
+		var filename = file.name;
+		$('#entryList').empty();
+		var fileReader = new FileReader();
+		fileReader.onload = function () {
+			beforeDownloadGpsPaths();
+			appendGpxContentsFromArrayBuffer(filename, this.result);
+		};
+		fileReader.readAsArrayBuffer(file);
+	} else
+		appendError('请先选择上传一个文件');
 });
 
 $('#fetch-gps-file-upload').on('change', function () {
@@ -375,6 +458,52 @@ function copyUrls(row) {
 		alert('已经拷贝' + lineCount + '条URL到剪贴板！');
 	}
 }
+
+
+/**
+ * 转成指数刻度
+ *
+ * @param {number} inputVal 输入值
+ * @param {*} inputMinVal 输入值最小值，若输入值等于此值，会返回0
+ * @param {*} inputMaxVal 输入值最大值，若输入值等于此值，会返回1
+ * @param {*} base 指数的基，如Math.E
+ * @param {*} baseMinX 图像最左侧的X，必须为正数。指数函数中取[-baseMiX, 0]这一段图像作为刻度
+ * @returns {*} 返回值的范围[0,1]
+ */
+function scaleToIndex(inputVal, inputMinVal, inputMaxVal, base, baseMinX) {
+	if (inputVal <= inputMinVal)
+		return 0;
+	if (inputVal >= inputMaxVal)
+		return 1;
+
+	inputVal -= inputMinVal; // 移到0
+	inputVal /= (inputMaxVal - inputMinVal); // [0,1]
+	inputVal -= 1; // [-1,0]
+	inputVal *= baseMinX; // [baseMinX,0]
+	return Math.pow(base, inputVal);
+}
+
+function splitPathThresholdSecond() {
+	var inputBox = $('#split-path-threshold');
+	var val = parseInt(inputBox.val());
+	var minValue = parseInt(inputBox.prop('min'));
+	var maxValue = parseInt(inputBox.prop('max'));
+	var ratio = scaleToIndex(val, minValue, maxValue, Math.E, 5); // [0,1]
+	return Math.abs(Math.trunc(ratio * 86400));
+}
+
+$('#split-path-threshold').on("change mousemove", function () {
+	var label = $('#split-path-threshold-text');
+	var checkBoxMultiKML = $('#split-into-multi-kml-span');
+	var second = splitPathThresholdSecond();
+	if (second < 1) {
+		label.html('无');
+		checkBoxMultiKML.css('display', 'none');
+	} else {
+		label.html(secondToHumanReadableString(second));
+		checkBoxMultiKML.css('display', 'inline-block');
+	}
+});
 
 loadArchiveFormats(['tar', 'rar', 'zip'], function () {
 	var button = $('#fetch-gps-file-list');
