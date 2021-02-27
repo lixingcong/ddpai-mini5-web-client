@@ -18,7 +18,7 @@
 				<button id="fetch-gps-file-list" disabled="true">正在加载JS库，请稍候</button>
 			</span>
 			<span class="btn-spacer">
-				<input type="file" id="fetch-gps-file-upload">
+				<input type="file" id="fetch-gps-file-upload" name="files[]" multiple accept=".gpx,.git" />
 			</span>
 		</div>
 
@@ -26,10 +26,19 @@
 
 		<div class="btn-container" style="display: none;">
 			<span class="btn-spacer">
-				<label><input type="checkbox" id="multicoord" name="gx_multicoord" >多轨模式</label>
+				<label><input type="checkbox" id="multicoord" name="gx_multicoord">多轨模式</label>
 			</span>
 			<span class="btn-spacer">
-				<label><input type="checkbox" id="interpolate" name="gx_interpolate" >多轨插值</label>
+				<label><input type="checkbox" id="interpolate" name="gx_interpolate">多轨插值</label>
+			</span>
+		</div>
+
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<button class="set-gpx-src" value="0">使用记录仪已选</button>
+			</span>
+			<span class="btn-spacer">
+				<button class="set-gpx-src" value="1">使用本地文件</button>
 			</span>
 		</div>
 
@@ -50,13 +59,20 @@
 
 		<div class="btn-container">
 			<span class="btn-spacer">
-				<input type="range" id="split-path-threshold" name="split-path-threshold" value="0" min="0" max="1000">
+				<input type="range" id="split-path-threshold" name="split-path-threshold" value="0" min="0"
+					max="1000" />
 			</span>
 		</div>
 
 		<div id="kmlFileList"></div>
+		<div id="kmlParseProgress"></div>
 		<div id="infoList"></div>
-		<div id="errorList"></div>
+		<div id="errorList">
+			<div id="errorListHeader" style="display: none;">
+				错误信息（<label id="errorCount">0</label>条）
+			</div>
+			<div id="errorListBody"></div>
+		</div>
 	</div>
 	<script src="kml.js" type="text/javascript" charset="UTF-8"></script>
 	<script src="ddpai.js" type="text/javascript" charset="UTF-8"></script>
