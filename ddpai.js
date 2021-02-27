@@ -7,15 +7,15 @@
  * @return {array} 当errcode字段为0时，返回数组，每个元素是字典，键值对详见代码，否则返回Array()
  */
 function API_GpsFileListReqToArray(inputJson) {
-    var j = JSON.parse(inputJson);
-    var ret = new Array();
+    let j = JSON.parse(inputJson);
+    let ret = new Array();
     if (0 == j.errcode) {
-        var file = JSON.parse(j.data).file;
-        var lastStartTime = 0;
-        var startTime, endTime;
-        var f, filename;
-        var lastArrayItem = undefined;
-        for (var i = 0; i < file.length; i++) {
+        let file = JSON.parse(j.data).file;
+        let lastStartTime = 0;
+        let startTime, endTime;
+        let f, filename;
+        let lastArrayItem = undefined;
+        for (let i = 0; i < file.length; i++) {
             f = file[i];
             //console.log(f);
             startTime = parseInt(f.starttime);
@@ -56,13 +56,13 @@ function API_GpsFileListReqToArray(inputJson) {
  * @return {number} 转化后的十进制度数
  */
 function dddmmToDecimal(dddmm) {
-    var s = dddmm.split('.');
-    var s0 = s[0], s1 = s[1];
-    var s0Len = s0.length;
-    var dString = s0.substr(0, s0Len - 2);
-    var mString = s0.substr(s0Len - 2) + '.' + s1;
-    var d = parseFloat(dString);
-    var m = parseFloat(mString) / 60;
+    let s = dddmm.split('.');
+    let s0 = s[0], s1 = s[1];
+    let s0Len = s0.length;
+    let dString = s0.substr(0, s0Len - 2);
+    let mString = s0.substr(s0Len - 2) + '.' + s1;
+    let d = parseFloat(dString);
+    let m = parseFloat(mString) / 60;
     return d + m;
 }
 
@@ -76,17 +76,17 @@ function dddmmToDecimal(dddmm) {
  * @return {array} 字典，key为timestamp，value为timestamp时刻的位置信息，类型是字典，具体字段见代码
  */
 function gpxToPathDict(gpxFileContent, maxLineCount, newline) {
-    var ret = {};
-    var gpxes = gpxFileContent.split(newline);
-    var actualLineCount = Math.min(maxLineCount, gpxes.length);
-    var line;
-    var comma = ',';
-    var lastTimeString = '', timeString, dateString;
-    var timestamp = 0;
-    var dateObj = new Date();
-    var lat, lon, latSgn, lonSgn, year, month, day, hour, minute, second, columns, altitude;
-    // var hdop, knots, heading;
-    for (var i = 0; i < actualLineCount; i++) {
+    let ret = {};
+    let gpxes = gpxFileContent.split(newline);
+    let actualLineCount = Math.min(maxLineCount, gpxes.length);
+    let line;
+    let comma = ',';
+    let lastTimeString = '', timeString, dateString;
+    let timestamp = 0;
+    let dateObj = new Date();
+    let lat, lon, latSgn, lonSgn, year, month, day, hour, minute, second, columns, altitude;
+    // let hdop, knots, heading;
+    for (let i = 0; i < actualLineCount; i++) {
         line = gpxes[i];
         // console.log(line);
         if (line.startsWith('$GPRMC')) {
@@ -125,7 +125,7 @@ function gpxToPathDict(gpxFileContent, maxLineCount, newline) {
             dateObj.setUTCHours(hour, minute, second, 0);
             timestamp = Math.trunc(dateObj.getTime() / 1000);
 
-            var gps = {
+            let gps = {
                 'lat': dddmmToDecimal(lat) * latSgn,
                 'lon': dddmmToDecimal(lon) * lonSgn,
                 // 'speed': 1.852 * knots, // 速度单位：km/h
@@ -159,7 +159,7 @@ function gpxToPathDict(gpxFileContent, maxLineCount, newline) {
                 // hdop=parseFloat(hdop);
                 altitude = parseFloat(altitude);
 
-                var gps = ret[timestamp]; // 取引用
+                let gps = ret[timestamp]; // 取引用
                 // gps['hdop'] = hdop; // 水平精度单位：米
                 gps['altitude'] = altitude; // 海拔高度单位：米
                 // console.log('hdop='+hdop+', alt='+altitude);
@@ -171,14 +171,14 @@ function gpxToPathDict(gpxFileContent, maxLineCount, newline) {
 }
 
 /* for test only 1 */
-// var testInputJson = '{"errcode":0,"data":"{\\"num\\":17,\\"file\\":[{\\"index\\":\\"0\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613931135\\",\\"endtime\\":\\"1613931512\\",\\"name\\":\\"20210221181215_0377.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"1\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930655\\",\\"endtime\\":\\"1613931135\\",\\"name\\":\\"20210221180415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"2\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930175\\",\\"endtime\\":\\"1613930655\\",\\"name\\":\\"20210221175615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"3\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929695\\",\\"endtime\\":\\"1613930175\\",\\"name\\":\\"20210221174815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"4\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929215\\",\\"endtime\\":\\"1613929695\\",\\"name\\":\\"20210221174015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"5\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928735\\",\\"endtime\\":\\"1613929215\\",\\"name\\":\\"20210221173215_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"6\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928255\\",\\"endtime\\":\\"1613928735\\",\\"name\\":\\"20210221172415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"7\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927775\\",\\"endtime\\":\\"1613928255\\",\\"name\\":\\"20210221171615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"8\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927295\\",\\"endtime\\":\\"1613927775\\",\\"name\\":\\"20210221170815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"9\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926815\\",\\"endtime\\":\\"1613927295\\",\\"name\\":\\"20210221170015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"10\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926388\\",\\"endtime\\":\\"1613926815\\",\\"name\\":\\"20210221165308_0427.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"11\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931812\\",\\"endtime\\":\\"1613931872\\",\\"name\\":\\"20210221182332_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"12\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931752\\",\\"endtime\\":\\"1613931812\\",\\"name\\":\\"20210221182232_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"13\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931692\\",\\"endtime\\":\\"1613931752\\",\\"name\\":\\"20210221182132_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"14\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931632\\",\\"endtime\\":\\"1613931692\\",\\"name\\":\\"20210221182032_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"15\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931572\\",\\"endtime\\":\\"1613931632\\",\\"name\\":\\"20210221181932_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"16\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931512\\",\\"endtime\\":\\"1613931572\\",\\"name\\":\\"20210221181832_0060.gpx\\",\\"parentfile\\":\\"\\"}]}"}';
+// let testInputJson = '{"errcode":0,"data":"{\\"num\\":17,\\"file\\":[{\\"index\\":\\"0\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613931135\\",\\"endtime\\":\\"1613931512\\",\\"name\\":\\"20210221181215_0377.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"1\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930655\\",\\"endtime\\":\\"1613931135\\",\\"name\\":\\"20210221180415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"2\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930175\\",\\"endtime\\":\\"1613930655\\",\\"name\\":\\"20210221175615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"3\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929695\\",\\"endtime\\":\\"1613930175\\",\\"name\\":\\"20210221174815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"4\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929215\\",\\"endtime\\":\\"1613929695\\",\\"name\\":\\"20210221174015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"5\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928735\\",\\"endtime\\":\\"1613929215\\",\\"name\\":\\"20210221173215_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"6\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928255\\",\\"endtime\\":\\"1613928735\\",\\"name\\":\\"20210221172415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"7\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927775\\",\\"endtime\\":\\"1613928255\\",\\"name\\":\\"20210221171615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"8\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927295\\",\\"endtime\\":\\"1613927775\\",\\"name\\":\\"20210221170815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"9\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926815\\",\\"endtime\\":\\"1613927295\\",\\"name\\":\\"20210221170015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"10\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926388\\",\\"endtime\\":\\"1613926815\\",\\"name\\":\\"20210221165308_0427.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"11\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931812\\",\\"endtime\\":\\"1613931872\\",\\"name\\":\\"20210221182332_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"12\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931752\\",\\"endtime\\":\\"1613931812\\",\\"name\\":\\"20210221182232_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"13\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931692\\",\\"endtime\\":\\"1613931752\\",\\"name\\":\\"20210221182132_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"14\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931632\\",\\"endtime\\":\\"1613931692\\",\\"name\\":\\"20210221182032_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"15\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931572\\",\\"endtime\\":\\"1613931632\\",\\"name\\":\\"20210221181932_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"16\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931512\\",\\"endtime\\":\\"1613931572\\",\\"name\\":\\"20210221181832_0060.gpx\\",\\"parentfile\\":\\"\\"}]}"}';
 // console.log(API_GpsFileListReqToArray(testInputJson));
 
-// var testDDDmm=['12345.6789', '2345.6789', '345.6789', '045.6789', '12345.0'];
+// let testDDDmm=['12345.6789', '2345.6789', '345.6789', '045.6789', '12345.0'];
 // testDDDmm.forEach(dddmm => {console.log(dddmmToDecimal(dddmm))});
 
 /* test gpx file
-var testGpxFileContent = '\
+let testGpxFileContent = '\
 $GPSCAMTIME 20210215124812\n\
 $GPGGA,044815.000,0021.333,N,12345.26029,E,1,24,0.60,0.9,M,-4.8,M,,*6A\n\
 $GPRMC,044816.000,A,0121.333,N,12345.26001,E,5.426,190.52,150221,,,A*4B\n\

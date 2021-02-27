@@ -45,7 +45,7 @@ function kmlTrackCoord(lat, lon, alt, precision, timeStr) {
 
 
 /* for test only 1 */
-// var kmlSingleTrack = kmlHead('SingleTrack', 'FolderName')
+// let kmlSingleTrack = kmlHead('SingleTrack', 'FolderName')
 // 	+ kmlPlacemarkHead('MyPOI', 'POI description')
 // 	+ kmlPlacemarkPoint(22.688959, 113.918788, 6)
 // 	+ kmlPlacemarkTail()
@@ -60,7 +60,7 @@ function kmlTrackCoord(lat, lon, alt, precision, timeStr) {
 // 	+ kmlTail();
 // console.log(kmlSingleTrack);
 
-// var kmlMultiTrack = kmlHead('MultiTrack', 'FolderName')
+// let kmlMultiTrack = kmlHead('MultiTrack', 'FolderName')
 // 	+ kmlPlacemarkHead('MyTrack', 'No')
 // 	+ kmlMultiTrackHead(false)
 // 	+ kmlTrackHead()

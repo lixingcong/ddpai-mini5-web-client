@@ -18,7 +18,7 @@
 				<button id="fetch-gps-file-list" disabled="true">正在加载JS库，请稍候</button>
 			</span>
 			<span class="btn-spacer">
-				<button id="export-gps-selected">下载所选</button>
+				<input type="file" id="fetch-gps-file-upload">
 			</span>
 		</div>
 
@@ -35,10 +35,16 @@
 
 		<div class="btn-container">
 			<span class="btn-spacer">
-				<label>分割时长阈值：</label><label id="split-path-threshold-text">无 </label>
+				<button class="export-to-kml" value="0">导出单KML</button>
 			</span>
-			<span class="btn-spacer" id="split-into-multi-kml-span" style="display: none;">
-				<input type="checkbox" id="split-into-multi-kml" name="split-into-multi-kml" >多KML</label>
+			<span class="btn-spacer">
+				<button class="export-to-kml" value="1">导出多KML</button>
+			</span>
+		</div>
+
+		<div class="btn-container">
+			<span class="btn-spacer">
+				<label>分割时长阈值：</label><label id="split-path-threshold-text">无 </label>
 			</span>
 		</div>
 
@@ -50,16 +56,6 @@
 
 		<div id="kmlFileList"></div>
 		<div id="infoList"></div>
-
-		<div class="btn-container">
-			<span class="btn-spacer">
-				<button id="fetch-gps-file-uploaded">从本机获取</button>
-			</span>
-			<span class="btn-spacer">
-				<input type="file" id="fetch-gps-file-upload">
-			</span>
-		</div>
-
 		<div id="errorList"></div>
 	</div>
 	<script src="kml.js" type="text/javascript" charset="UTF-8"></script>
