@@ -555,18 +555,18 @@ function splitPathThresholdSecond() {
 	return Math.abs(Math.trunc(ratio * 86400));
 }
 
-$('#split-path-threshold').on("change mousemove", function () {
+function updateSplitPathThresholdText() {
 	let label = $('#split-path-threshold-text');
-	let checkBoxMultiKML = $('#split-into-multi-kml-span');
 	let second = splitPathThresholdSecond();
 	if (second < 1) {
-		label.html('无');
-		checkBoxMultiKML.css('display', 'none');
+		label.html('不分割');
 	} else {
 		label.html(secondToHumanReadableString(second));
-		checkBoxMultiKML.css('display', 'inline-block');
 	}
-});
+}
+
+$('#split-path-threshold').on("change mousemove", updateSplitPathThresholdText);
+updateSplitPathThresholdText();
 
 loadArchiveFormats(['tar'], function () {
 	let button = $('#fetch-gps-file-list');
