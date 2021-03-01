@@ -11,16 +11,19 @@ var serverAjaxTimeout = 3000;
 
 // gps arrays
 var gpsFileListReq = [];
-var gpxContents = null;
-var gpxContentsExpectCount = 0;
-var gpxHttpPendingFilenames = [];
+var gpxContents = [];
 
 // miscs
 var dateObj = new Date();
 var timestampOffset = dateObj.getTimezoneOffset() * 60000;
 var errorCount = 0;
 var tableMulitselStatus = false;
-var infoCounter = 0;
+var costTimestampBegin = 0;
+
+const requestInstance = new RequestDecorator({
+	maxLimit: 4,
+	requestApi: promiseHttpGetAjax
+});
 
 Date.prototype.format = function (fmt) {
 	// https://blog.scottchayaa.com/post/2019/05/27/javascript_date_memo
@@ -44,10 +47,6 @@ function timestampToString(ts, fmt, offset) {
 	return dateObj.format(fmt);
 }
 
-function decreaseGpxContentsExpectCount() {
-	--gpxContentsExpectCount;
-}
-
 function secondToHumanReadableString(second) {
 	if (second < 60)
 		return second + 's';
@@ -63,47 +62,6 @@ function byteToHumanReadableSize(bytes) {
 	if (bytes == 0) return '0B';
 	let i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
 	return (bytes / Math.pow(1024, i)).toFixed(1) + sizes[i];
-}
-
-function appendGpxContentsFromArrayBuffer(filename, arrayBuffer) {
-	let archive = archiveOpenArrayBuffer(filename, '', arrayBuffer);
-	if (archive) {
-		let validEntries = [];
-		archive.entries.forEach(e => {
-			if (e.is_file)
-				validEntries.push(e);
-		});
-		let entryCount = validEntries.length;
-		gpxContentsExpectCount += entryCount;
-		for (let i = 0; i < entryCount; ++i) {
-			let entry = validEntries[i];
-			entry.readData(function (data) {
-				function promiseReader(file) {
-					return new Promise(function (resolve, reject) {
-						let reader = new FileReader();
-						reader.onload = function () { resolve(reader.result); };
-						reader.onerror = reject;
-						reader.onabort = reject;
-						reader.readAsText(file);
-					});
-				}
-
-				promiseReader(new Blob([data])).then(function (result) { // on ok
-					let sortKey = parseInt(entry.name.split('_')[0].substr(4));
-					//console.log('push ' + entry.name);
-					gpxContents.push([sortKey, result]);
-				}, function () {
-					appendError('Error reading ' + entry.name + ' from ' + filename);
-					decreaseGpxContentsExpectCount();
-				}).then(function () {
-					if (i + 1 === entryCount)
-						decreaseGpxContentsExpectCount(); // last one
-					showSourceProgress();
-				});
-			});
-		}
-	} else
-		decreaseGpxContentsExpectCount(); // restore from downloadGpsPaths(idxes)
 }
 
 $('#fetch-gps-file-list').click(function () {
@@ -123,7 +81,8 @@ $('#fetch-gps-file-list').click(function () {
 				let fmt = 'MM月dd日 hh:mm';
 				let innerHtml = '<table>\n';
 				let multiSelect = '<a href="javascript:void(0)" id="table-multiselect-href">全选</a>';
-				innerHtml += '<thead><tr><th>轨迹时间 URL</th><th>时长</th><th>git</th><th>gpx</th><th>' + multiSelect + '</th></tr></thead>\n';
+				let copyAllUrls = '<a href="javascript:copyUrls(-1)" >轨迹时间 URL</a>';
+				innerHtml += '<thead><tr><th>' + copyAllUrls + '</th><th>时长</th><th>git</th><th>gpx</th><th>' + multiSelect + '</th></tr></thead>\n';
 				innerHtml += '<tbody>\n';
 				let row = 0;
 				let from, fromHref, to, duration, button, checkBox, gitCount, gpxCount;
@@ -178,74 +137,6 @@ $('#fetch-gps-file-list').click(function () {
 
 function isFilenameGpxGit(filename) {
 	return filename.search(/\d{14}_\d{4}\.g(px|it)/i) >= 0;
-}
-
-function parseBlob(filename, blob) {
-	function promiseReader(isText) {
-		return new Promise(function (resolve, reject) {
-			let reader = new FileReader();
-			reader.onload = function () { resolve(reader.result); };
-			reader.onabort = reject;
-			reader.onerror = reject;
-			if (isText)
-				reader.readAsText(blob);
-			else
-				reader.readAsArrayBuffer(blob);
-		});
-	}
-
-	if (filename.endsWith('.git') || filename.endsWith('.tar')) {
-		promiseReader(false).then(function (result) {
-			appendGpxContentsFromArrayBuffer(filename, result);
-		}, function () {
-			appendError('无法解析 ' + filename);
-		});
-	} else if (filename.endsWith('.gpx')) {
-		promiseReader(true).then(function (result) {
-			let sortKey = parseInt(filename.split('_')[0].substr(4));
-			// console.log('push raw ' + filename);
-			gpxContents.push([sortKey, result]);
-		}, function () {
-			decreaseGpxContentsExpectCount();
-			appendError('无法解析 ' + filename);
-		}).then(function () {
-			showSourceProgress();
-		});
-	}
-}
-
-function beginDownloadGpsPath() {
-	if (gpxHttpPendingFilenames.length > 0) {
-		let filename = gpxHttpPendingFilenames.pop();
-		$.ajax({
-			type: 'GET',
-			url: serverHostUrl + '/' + filename,
-			xhrFields: {
-				responseType: 'blob'
-			},
-			timeout: serverAjaxTimeout,
-			success: function (response) {
-				parseBlob(filename, response);
-			},
-			error: function () {
-				appendError('Failed to download ' + this.url);
-				decreaseGpxContentsExpectCount();
-				showSourceProgress();
-			},
-			abort: function () {
-				appendError('Abort to download ' + this.url);
-				decreaseGpxContentsExpectCount();
-				showSourceProgress();
-			},
-			complete: function () {
-				beginDownloadGpsPath(); // 继续下载另一个URL
-			}
-		});
-	}
-}
-
-function showSourceProgress() {
-	$('#kmlParseProgress').html('#' + (++infoCounter) + ' 轨迹文件数(' + gpxContents.length + '/' + gpxContentsExpectCount + '), 剩余HTTP请求' + gpxHttpPendingFilenames.length + '<br/>');
 }
 
 function exportToKml(isSingleFile) {
@@ -305,7 +196,7 @@ function exportToKml(isSingleFile) {
 			let kmlTrack = kmlPlacemarkHead(filename, '盯盯拍导出', 'TrackStyle') + kmlTrackHead();
 			let kmlLineString = kmlPlacemarkHead('线条' + index + '_' + tsFromStr, '盯盯拍导出', 'LineStyle') + kmlLineStringHead();
 			let lat, lon, altitude;
-			let kml ='';
+			let kml = '';
 
 			// begin and end point
 			let gpsAtTsFrom = pathDict[tsFrom];
@@ -389,30 +280,124 @@ function exportToKml(isSingleFile) {
 	infoList.append('处理完成，总耗时 ' + (costTimestampEnd - costTimestampBegin) + 'ms');
 }
 
+// ---- promise 1 ----
+function promiseReadBlob(blob, isText) {
+	return new Promise(function (resolve, reject) {
+		let reader = new FileReader();
+		reader.onload = function () { resolve(reader.result); };
+		reader.onerror = reject;
+		reader.onabort = reject;
+		if (isText)
+			reader.readAsText(blob);
+		else
+			reader.readAsArrayBuffer(blob);
+	});
+}
+
+function promiseReadGpx(filename, blob) {
+	return promiseReadBlob(blob, true).then((textData) => {
+		const key = filename.split('_')[0].substr(4); // 20210225124929_0060.gpx => 0225124929
+		//console.log('key='+key);
+		gpxContents.push([key, textData]);
+		refreshDownloadProgress();
+		return Promise.resolve();
+	});
+}
+
+const promiseReadGit = async (filename, blob) => {
+	// API: resolve([[key1,textData1], [key2,textData2], [key3,textData3], ...])
+	const archive = await promiseReadBlob(blob, false).then(
+		function (arrayBuffer) {
+			return new Promise(function (resolve, reject) {
+				let archive = archiveOpenArrayBuffer(filename, '', arrayBuffer);
+				if (archive)
+					resolve(archive);
+				else
+					reject();
+			});
+		}
+	);
+
+	if (archive) {
+		const readEntryData = async (entry) => {
+			return new Promise(function (resolve) {
+				entry.readData(resolve);
+			});
+		}
+
+		return Promise.allSettled(
+			archive.entries.map(async (e) => {
+				if (e.is_file) {
+					const entryData = await readEntryData(e);
+					return promiseReadGpx(e.name, new Blob([entryData]));
+				} else {
+					return Promise.reject();
+				}
+			})
+		);
+	}
+
+	return Promise.reject();
+}
+
+function promiseHttpGetAjax(url, responseType = 'text') {
+	// API: resolve(blobData) reject(httpCode)
+	return new Promise(function (resolve, reject) {
+		let xhr = new XMLHttpRequest();
+		xhr.responseType = responseType;
+		xhr.open('GET', url, true);
+		xhr.send();
+		xhr.onreadystatechange = function () {
+			if (this.readyState === 4) {
+				if (this.status === 200)
+					resolve(this.response);
+				else
+					reject(xhr.status);
+			}
+		}
+	});
+}
+
+const parseGitAndGpxFromBlob = (filename, blob) => {
+	if (filename.endsWith('git'))
+		return promiseReadGit(filename, blob);
+	else if (filename.endsWith('gpx'))
+		return promiseReadGpx(filename, blob);
+	return Promise.reject();
+};
+// ---- promise 2 ----
+
+function beforeDownloadGpsPaths() {
+	gpxContents = [];
+	costTimestampBegin = (new Date()).getTime();
+	$('#kmlFileList').empty();
+	$('#infoList').empty();
+	$('#errorList').empty();
+}
+
 // 参数idxes为整数的数组
 function downloadGpsPaths(idxes) {
+	beforeDownloadGpsPaths();
+
+	let promises = [];
 	idxes.forEach(idx => {
 		let g = gpsFileListReq[idx];
 		g['filename'].forEach(filename => {
-			if (isFilenameGpxGit(filename)) {
-				gpxHttpPendingFilenames.push(filename);
-				++gpxContentsExpectCount; // gpx+git文件期望个数，须预先在这里设置好
-			}
+			let url = serverHostUrl + '/' + filename;
+			promises.push(requestInstance.request(url, 'blob').then((blob) => {
+				return parseGitAndGpxFromBlob(filename, blob);
+			}));
 		});
 	});
 
-	if (idxes.length > 0) {
-		for (let i = 0; i < 4; ++i) // 限制下载连接数
-			beginDownloadGpsPath();
-	}
+	Promise.allSettled(promises).then(function (results) {
+		refreshDownloadProgress(true);
+	});
 }
 
 $('.set-gpx-src').click(function () {
 	// before download Gps Paths
-	gpxContents = new Array();
-	gpxContentsExpectCount = 0;
-	infoCounter = 0;
-	gpxHttpPendingFilenames = new Array();
+	gpxContents = []
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	$('#kmlParseProgress').empty();
@@ -446,13 +431,16 @@ $('.set-gpx-src').click(function () {
 		}
 
 		// 处理上传的文件
-		Object.keys(files).forEach(function (fileIndex) {
+		let promises = Object.keys(files).map((fileIndex) => {
 			let f = files[fileIndex];
 			let filename = f.name;
-			if (isFilenameGpxGit(filename)) {
-				++gpxContentsExpectCount;
-				parseBlob(filename, f);
-			}
+			if (isFilenameGpxGit(filename))
+				return parseGitAndGpxFromBlob(filename, f);
+			return Promise.reject();
+		});
+
+		Promise.allSettled(promises).then((results) => {
+			refreshDownloadProgress(true);
 		});
 	}
 });
@@ -464,7 +452,6 @@ $('.export-to-kml').click(function () {
 
 function appendError(s) {
 	if (errorCount <= 0) {
-		console.log("err count=" + errorCount);
 		$('#errorListHeader').css('display', 'inline-block');
 	}
 
@@ -479,12 +466,33 @@ function clearErrors() {
 	errorCount = 0;
 }
 
+function refreshDownloadProgress(isFinished = false) {
+	let finshedText = (isFinished ? '，已下载完毕' : '');
+	$('#infoList').html('轨迹文件数：' + gpxContents.length + finshedText + '<br/>');
+}
+
 function copyUrls(row) {
 	let text2copy = '';
 	let lineCount = 0;
-	gpsFileListReq[row]['filename'].forEach(filename => {
-		text2copy += serverHostUrl + '/' + filename + '\n';
-		++lineCount;
+	let rows = [];
+	if (row < 0) {
+		let checkedBoxes = $("input[name='history-select']:checked");
+		$.each(checkedBoxes, function () {
+			rows.push(parseInt($(this).val()));
+		});
+
+		if (rows.length <= 0) {
+			alert('请勾选至少一项，才能复制URL');
+			return;
+		}
+	} else
+		rows.push(row);
+
+	rows.forEach(r => {
+		gpsFileListReq[r]['filename'].forEach(filename => {
+			text2copy += serverHostUrl + '/' + filename + '\n';
+			++lineCount;
+		});
 	});
 
 	if (lineCount > 0) {
