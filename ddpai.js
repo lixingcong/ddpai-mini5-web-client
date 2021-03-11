@@ -25,8 +25,6 @@ function API_GpsFileListReqToArray(inputJson) {
                 lastArrayItem = {
                     'from': startTime,
                     'to': endTime,
-                    'gpx': 0,
-                    'git': 0,
                     'filename': new Array()
                 };
                 ret.push(lastArrayItem);
@@ -35,11 +33,6 @@ function API_GpsFileListReqToArray(inputJson) {
             }
 
             filename = f.name;
-            if (filename.endsWith('git'))
-                lastArrayItem['git']++;
-            else if (filename.endsWith('gpx'))
-                lastArrayItem['gpx']++;
-
             lastArrayItem['filename'].push(filename);
             lastStartTime = startTime;
         }
