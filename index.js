@@ -8,7 +8,7 @@ var urlAPIGpsFileListReq = serverHostUrl + '/cmd.cgi?cmd=API_GpsFileListReq';
 
 // gps arrays
 var gpsFileListReq = [];
-var gpxContents = [];
+var gpxContents = {}; // 字典，为timestamp到GPS的映射
 
 // miscs
 var dateObj = new Date();
@@ -169,37 +169,21 @@ function isFilenameGpxGit(filename) {
 
 function exportToKml(isSingleFile) {
 	let costTimestampBegin = now();
-
-	gpxContents.sort(function (a, b) {
-		return a[0] > b[0] ? 1 : -1;
-	});
-
-	let pathDict = {};
-	let convertedDict;
-	gpxContents.forEach(gpx => {
-		convertedDict = gpxToPathDict(gpx[1], 150, '\n');
-		pathDict = Object.assign({}, pathDict, convertedDict);
-	});
-
 	let pathDictKeys = [];
-	let g;
-	Object.keys(pathDict).forEach(k => {
-		if (!isNaN(+k)) {
-			g = pathDict[k];
-			if (('lat' in g) && ('lon' in g))
-				pathDictKeys.push(k);
-		}
+	Object.keys(gpxContents).forEach(k => {
+		const g = gpxContents[k];
+		if (('lat' in g) && ('lon' in g))
+			pathDictKeys.push(k);
 	});
 
 	let kmlFileList = $('#kmlFileList');
 	kmlFileList.empty();
 	$('#infoList').empty();
-	setProgress(-1);
 	if (pathDictKeys.length > 0) {
 		// 分割
 		let pathDictKeysGrouped = [];
 		pathDictKeys.sort();
-		let splitPathThreshold = splitPathThresholdSecond();; // s
+		let splitPathThreshold = splitPathThresholdSecond(); // s
 		let lastTimestamp = 0;
 		let lastGroup = new Array();
 		if (splitPathThreshold < 1) { // 小于1表示不分割
@@ -226,7 +210,6 @@ function exportToKml(isSingleFile) {
 			const filename = '轨迹' + index;
 			let kmlTrack = kmlPlacemarkHead(filename + '_' + tsFromStr, '盯盯拍导出', 'TrackStyle') + kmlTrackHead();
 			let kmlLineString = kmlPlacemarkHead('线条' + index + '_' + tsFromStr, '盯盯拍导出', 'LineStyle') + kmlLineStringHead();
-			let lat, lon, altitude;
 			let kml = '';
 
 			// begin and end point
@@ -240,15 +223,14 @@ function exportToKml(isSingleFile) {
 			}
 
 			// tracks
-			let kmlCoordWhen = '';
 			pathDictKeys.forEach(timestamp => {
-				g = pathDict[timestamp];
-				altitude = 0;
+				const g = pathDict[timestamp];
+				let altitude = 0;
 				if ('altitude' in g)
 					altitude = g['altitude'];
-				lat = g['lat'];
-				lon = g['lon'];
-				kmlCoordWhen = timestampToString(timestamp, 'yyyy-MM-ddThh:mm:ssZ', timestampOffset);
+				const lat = g['lat'];
+				const lon = g['lon'];
+				const kmlCoordWhen = timestampToString(timestamp, 'yyyy-MM-ddThh:mm:ssZ', timestampOffset);
 				kmlTrack += kmlTrackCoord(lat, lon, altitude, 6, kmlCoordWhen);
 				kmlLineString += kmlLineStringCoord(lat, lon, 6, true);
 			});
@@ -259,7 +241,7 @@ function exportToKml(isSingleFile) {
 			return { 'kml': kml, 'filename': filename, 'pointCount': pathDictKeys.length, 'tsFrom': tsFrom, 'tsTo': tsTo };
 		}
 
-		function appendKmlResult(kmlContent, filename, pointCount, duration) {
+		function appendKmlResult(kmlContent, filename, pointCount, tsFrom, tsTo) {
 			filename += '.kml';
 			let blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
 			let newLink = $('<a>', {
@@ -269,9 +251,14 @@ function exportToKml(isSingleFile) {
 			});
 
 			kmlFileList.append(newLink);
-			let kmlHint = '<br/>文件大小' + byteToHumanReadableSize(blob.size) + '，点位数量' + pointCount;
-			if (duration >= 0)
-				kmlHint += '，轨迹持续' + secondToHumanReadableString(duration);
+			let kmlHint = '<br/>文件大小' + byteToHumanReadableSize(blob.size) + '，点位' + pointCount;
+			const duration = tsTo - tsFrom;
+			if (duration > 0) {
+				kmlHint += '，持续' + secondToHumanReadableString(duration);
+				const g1 = gpxContents[tsFrom];
+				const g2 = gpxContents[tsTo];
+				kmlHint += '，直线' + wgs84Distance(g1['lat'], g1['lon'], g2['lat'], g2['lon']);
+			}
 			kmlFileList.append(kmlHint + '<br/>');
 		}
 
@@ -283,39 +270,38 @@ function exportToKml(isSingleFile) {
 			let kml = '';
 			let tsFrom = Number.MAX_SAFE_INTEGER;
 			let tsTo = Number.MIN_SAFE_INTEGER;
-			let g = undefined;
+			let pathHint = '';
+			const simpleTimestampToString = (a, b) => timestampToString(a, 'MM-dd_hh:mm', 0) + '~' + timestampToString(b, 'MM-dd_hh:mm', 0);
 			pathDictKeysGrouped.forEach((keys, idx) => {
-				setProgress(idx / pathDictKeysGrouped.length);
 				const readableIdx = idx + 1;
 				const idxStr = (readableIdx > 9 ? readableIdx : ('0' + readableIdx));
-				g = kmlGroupContent(pathDict, keys, idxStr);
+				const g = kmlGroupContent(gpxContents, keys, idxStr);
+				const thisTsFrom = g['tsFrom'];
+				const thisTsTo = g['tsTo'];
+				const g1 = gpxContents[thisTsFrom];
+				const g2 = gpxContents[thisTsTo];
+				pathHint += '轨迹' + idxStr + '，' + simpleTimestampToString(thisTsFrom, thisTsTo) + '，' + secondToHumanReadableString(thisTsTo - thisTsFrom) + '，直线' + wgs84Distance(g1['lat'], g1['lon'], g2['lat'], g2['lon']) + '<br>';
 				kml += g['kml'];
-				if (tsFrom > g['tsFrom'])
-					tsFrom = g['tsFrom'];
-				if (tsTo < g['tsTo'])
-					tsTo = g['tsTo'];
+				if (tsFrom > thisTsFrom)
+					tsFrom = thisTsFrom;
+				if (tsTo < thisTsTo)
+					tsTo = thisTsTo;
 			});
-			setProgress(1);
 
 			const filename = tsFromToString(tsFrom, tsTo) + '_轨迹共' + pathDictKeysGrouped.length + '条';
 			kml = kmlHead(filename, '文件夹') + kml + kmlTail();
-			let pointCount = pathDictKeys.length;
-			let duration = -1;
-			if (pointCount > 1)
-				duration = pathDictKeys[pointCount - 1] - pathDictKeys[0];
-			appendKmlResult(kml, filename, pointCount, duration);
+			appendKmlResult(kml, filename, pathDictKeys.length, tsFrom, tsTo);
+			kmlFileList.append(pathHint);
 		} else {
 			let kml = undefined;
 			let filename = undefined;
 			let g = undefined;
 			pathDictKeysGrouped.forEach((keys, idx) => {
-				setProgress(idx / pathDictKeysGrouped.length);
-				g = kmlGroupContent(pathDict, keys, '');
+				g = kmlGroupContent(gpxContents, keys, '');
 				const filename = tsFromToString(g['tsFrom'], g['tsTo']) + '_轨迹';
 				kml = kmlHead(filename, '文件夹') + g['kml'] + kmlTail();
-				appendKmlResult(kml, filename, g['pointCount'], g['tsTo'] - g['tsFrom']);
+				appendKmlResult(kml, filename, g['pointCount'], g['tsFrom'], g['tsTo']);
 			});
-			setProgress(1);
 		}
 	} else {
 		kmlFileList.append($('<a>', {
@@ -325,7 +311,6 @@ function exportToKml(isSingleFile) {
 		kmlFileList.append('<br/>');
 	}
 
-	setProgress(-2);
 	infoList.append('导出KML完成，耗时 ' + (now() - costTimestampBegin) + 'ms');
 }
 
@@ -345,9 +330,8 @@ function promiseReadBlob(blob, isText) {
 
 function promiseReadGpx(filename, blob) {
 	return promiseReadBlob(blob, true).then((textData) => {
-		const key = filename.split('_')[0].substr(4); // 20210225124929_0060.gpx => 0225124929
-		//console.log('key='+key);
-		gpxContents.push([key, textData]);
+		const convertedDict = gpxToPathDict(textData, 150, '\n');
+		gpxContents = Object.assign({}, gpxContents, convertedDict);
 		refreshDownloadProgress();
 		return Promise.resolve();
 	});
@@ -438,7 +422,7 @@ const parseGitAndGpxFromBlob = (filename, blob) => {
 // ---- promise 2 ----
 
 function beforeDownloadGpsPaths() {
-	gpxContents = [];
+	gpxContents = {};
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	clearErrors();
@@ -479,7 +463,7 @@ function downloadGpsPaths(idxes) {
 
 $('.set-gpx-src').click(function () {
 	// before download Gps Paths
-	gpxContents = []
+	gpxContents = {};
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	clearErrors();
@@ -495,7 +479,7 @@ $('.set-gpx-src').click(function () {
 		});
 
 		if (idxes.length <= 0) {
-			appendError('请勾选至少一项');
+			appendError('从记录仪获取后，请勾选至少一项');
 			return;
 		}
 
@@ -504,7 +488,6 @@ $('.set-gpx-src').click(function () {
 	} else {
 		let costTimestampBegin = now();
 		$('#entryList').empty();
-		setProgress(-1);
 		let files = $("#fetch-gps-file-upload")[0].files;
 		let fileCount = files.length;
 
@@ -514,6 +497,7 @@ $('.set-gpx-src').click(function () {
 		}
 
 		// 处理上传的文件
+		setProgress(-1);
 		let promises = Object.keys(files).map((fileIndex) => {
 			let f = files[fileIndex];
 			let filename = f.name;
@@ -557,7 +541,7 @@ function clearErrors() {
 
 function refreshDownloadProgress(costTime = -1) {
 	let finshedText = (costTime >= 0 ? '，已下载完毕（耗时' + costTime + 'ms）' : '');
-	$('#infoList').html('轨迹文件数：' + gpxContents.length + finshedText + '<br/>');
+	$('#infoList').html('原始点位数：' + Object.keys(gpxContents).length + finshedText + '<br/>');
 }
 
 function copyUrls(row) {
@@ -685,6 +669,21 @@ function setProgress(value) {
 	} else {
 		div.hide();
 	}
+}
+
+// lat纬度 lon经度，返回字符串
+function wgs84Distance(lat1, lon1, lat2, lon2) {
+	const deg2rad = d => d * Math.PI / 180.0;
+	const dx = lon1 - lon2;
+	const dy = lat1 - lat2;
+	const b = (lat1 + lat2) / 2.0;
+	const Lx = deg2rad(dx) * 6367000.0 * Math.cos(deg2rad(b));
+	const Ly = 6367000.0 * deg2rad(dy);
+	const meter = Math.sqrt(Lx * Lx + Ly * Ly);
+
+	if (meter > 1000)
+		return (meter / 1000).toFixed(1) + '公里';
+	return Math.trunc(meter) + '米';
 }
 
 loadArchiveFormats(['tar'], function () {
