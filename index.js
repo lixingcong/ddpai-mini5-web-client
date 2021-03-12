@@ -46,6 +46,10 @@ function timestampToString(ts, fmt, offset) {
 	return dateObj.format(fmt);
 }
 
+function isMobileUserAgent() {
+	return /Android|webOS|iPhone|iPad|Mac|Macintosh|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 function secondToHumanReadableString(second) {
 	if (second < 60)
 		return second + 's';
@@ -150,6 +154,8 @@ $('#fetch-gps-file-list').click(function () {
 		} else {
 			entryList.html('GPS file list from server is empty!');
 		}
+	}, (rejectedReason) => {
+		appendError(rejectedReason);
 	});
 });
 
@@ -373,12 +379,17 @@ const promiseReadGit = async (filename, blob) => {
 			}
 		}
 
-		const readFileDecorator = new RequestDecorator({
-			maxLimit: 4,
-			requestApi: readGpxFromEntry
-		});
+		let promises;
+		if (isMobileUserAgent()) {
+			const readFileDecorator = new RequestDecorator({
+				maxLimit: 4, // restrict max concurrent on mobile phones
+				requestApi: readGpxFromEntry
+			});
+			promises = archive.entries.map((e) => readFileDecorator.request(e));
+		} else
+			promises = archive.entries.map((e) => readGpxFromEntry(e));
 
-		return Promise.allSettled(archive.entries.map((e) => readFileDecorator.request(e))).then((results) => {
+		return Promise.allSettled(promises).then((results) => {
 			results.forEach(r => {
 				if (r.status === 'rejected') {
 					appendError(r.reason);
