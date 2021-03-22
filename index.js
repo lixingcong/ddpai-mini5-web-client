@@ -194,6 +194,7 @@ function exportToKml(isSingleFile) {
 	let kmlFileList = $('#kmlFileList');
 	kmlFileList.empty();
 	$('#infoList').empty();
+	setProgress(-1);
 	if (pathDictKeys.length > 0) {
 		// 分割
 		let pathDictKeysGrouped = [];
@@ -280,18 +281,19 @@ function exportToKml(isSingleFile) {
 
 		if (isSingleFile) {
 			let kml = '';
-			let kmlGroupContentIndex = 0;
 			let tsFrom = Number.MAX_SAFE_INTEGER;
 			let tsTo = Number.MIN_SAFE_INTEGER;
 			let g = undefined;
-			pathDictKeysGrouped.forEach(keys => {
-				g = kmlGroupContent(pathDict, keys, ++kmlGroupContentIndex);
+			pathDictKeysGrouped.forEach((keys, idx) => {
+				setProgress(idx / pathDictKeysGrouped.length);
+				g = kmlGroupContent(pathDict, keys, idx + 1);
 				kml += g['kml'];
 				if (tsFrom > g['tsFrom'])
 					tsFrom = g['tsFrom'];
 				if (tsTo < g['tsTo'])
 					tsTo = g['tsTo'];
 			});
+			setProgress(1);
 
 			const filename = tsFromToString(tsFrom, tsTo) + '_轨迹共' + pathDictKeysGrouped.length + '条';
 			kml = kmlHead(filename, '文件夹') + kml + kmlTail();
@@ -305,11 +307,13 @@ function exportToKml(isSingleFile) {
 			let filename = undefined;
 			let g = undefined;
 			pathDictKeysGrouped.forEach((keys, idx) => {
+				setProgress(idx / pathDictKeysGrouped.length);
 				g = kmlGroupContent(pathDict, keys, '');
 				const filename = tsFromToString(g['tsFrom'], g['tsTo']) + '_轨迹';
 				kml = kmlHead(filename, '文件夹') + g['kml'] + kmlTail();
 				appendKmlResult(kml, filename, g['pointCount'], g['tsTo'] - g['tsFrom']);
 			});
+			setProgress(1);
 		}
 	} else {
 		kmlFileList.append($('<a>', {
@@ -319,6 +323,7 @@ function exportToKml(isSingleFile) {
 		kmlFileList.append('<br/>');
 	}
 
+	setProgress(-2);
 	infoList.append('导出KML完成，耗时 ' + (now() - costTimestampBegin) + 'ms');
 }
 
@@ -435,6 +440,7 @@ function beforeDownloadGpsPaths() {
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	clearErrors();
+	setProgress(-1);
 }
 
 // 参数idxes为整数的数组
@@ -464,6 +470,7 @@ function downloadGpsPaths(idxes) {
 				appendError(r.reason);
 			}
 		});
+		setProgress(-2);
 		refreshDownloadProgress(now() - costTimestampBegin);
 	});
 }
@@ -473,7 +480,6 @@ $('.set-gpx-src').click(function () {
 	gpxContents = []
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
-	$('#kmlParseProgress').empty();
 	clearErrors();
 
 	let setToServer = $(this).val() < 1;
@@ -496,6 +502,7 @@ $('.set-gpx-src').click(function () {
 	} else {
 		let costTimestampBegin = now();
 		$('#entryList').empty();
+		setProgress(-1);
 		let files = $("#fetch-gps-file-upload")[0].files;
 		let fileCount = files.length;
 
@@ -519,6 +526,7 @@ $('.set-gpx-src').click(function () {
 					appendError(r.reason);
 				}
 			});
+			setProgress(-2);
 			refreshDownloadProgress(now() - costTimestampBegin);
 		});
 	}
@@ -659,6 +667,23 @@ function selectHistoryRows(values, checked = true, toggle = false) {
 				$(this).prop('checked', checked);
 		}
 	});
+}
+
+// value=-1: indeterminate; value=[0,1): determinate; -2: hide div
+function setProgress(value) {
+	let div = $('#progressBarDiv');
+	let pb = $('#progressBar');
+	console.log('change progress=' + value);
+	if (value >= 0 && value <= 1) {
+		div.show();
+		pb.attr('value', value);
+	} else if (value == -1) {
+		div.show();
+		pb.removeAttr('value');
+	} else {
+		console.log('hide progress');
+		div.hide();
+	}
 }
 
 loadArchiveFormats(['tar'], function () {

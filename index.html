@@ -51,21 +51,27 @@
 			</span>
 		</div>
 
-		<div class="btn-container">
-			<span class="btn-spacer">
-				<label>分割间隔时长阈值：</label><label id="split-path-threshold-text"></label>
-			</span>
-		</div>
+		<details>
+			<summary>其它参数</summary>
+			<div class="btn-container">
+				<span class="btn-spacer">
+					<label>分割间隔时长阈值：</label><label id="split-path-threshold-text"></label>
+				</span>
+			</div>
 
-		<div class="btn-container">
-			<span class="btn-spacer">
-				<input type="range" id="split-path-threshold" name="split-path-threshold" value="230" min="0"
-					max="1000" />
-			</span>
-		</div>
+			<div class="btn-container">
+				<span class="btn-spacer">
+					<input type="range" id="split-path-threshold" name="split-path-threshold" value="230" min="0"
+						max="1000" />
+				</span>
+			</div>
+		</details>
 
 		<div id="kmlFileList"></div>
-		<div id="kmlParseProgress"></div>
+		<div id="progressBarDiv" style="display: none;">
+			<label>处理进度 </label>
+			<progress id="progressBar" value="-1"></progress>
+		</div>
 		<div id="infoList"></div>
 		<div id="errorList">
 			<div id="errorListHeader" style="display: none;">
