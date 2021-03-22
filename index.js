@@ -673,7 +673,7 @@ function selectHistoryRows(values, checked = true, toggle = false) {
 function setProgress(value) {
 	let div = $('#progressBarDiv');
 	let pb = $('#progressBar');
-	console.log('change progress=' + value);
+	//console.log('change progress=' + value);
 	if (value >= 0 && value <= 1) {
 		div.show();
 		pb.attr('value', value);
@@ -681,7 +681,6 @@ function setProgress(value) {
 		div.show();
 		pb.removeAttr('value');
 	} else {
-		console.log('hide progress');
 		div.hide();
 	}
 }
