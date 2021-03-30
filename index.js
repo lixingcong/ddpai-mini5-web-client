@@ -261,7 +261,7 @@ function exportToKml(isSingleFile) {
 
 		function appendKmlResult(kmlContent, filename, pointCount, duration) {
 			filename += '.kml';
-			let blob = new Blob([kmlContent]);
+			let blob = new Blob([kmlContent], {type : 'application/vnd.google-earth.kml+xml'});
 			let newLink = $('<a>', {
 				text: filename,
 				download: filename,
