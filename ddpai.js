@@ -1,5 +1,48 @@
 "use strict"
 
+
+/**
+ * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
+ *
+ * @param {array} intervals 数组为[[1,2], [2,5], [6,10], [0,1]]表示起始结束时刻的多组数据
+ * @return {dict} 返回合并好的数组加索引，如上述输出为{'merged':[[0,5], [6,10]], 'index':[0,0,1,0]}
+ */
+function mergeIntervals(intervals) {
+    const intervalsSorted = intervals.slice().sort((a, b) => { return a[0] - b[0]; });
+    // console.log(intervalsSorted);
+    let merged = [];
+    intervalsSorted.forEach(t => {
+        const L = merged.length;
+        const t0 = t[0];
+        const t1 = t[1];
+        if (L == 0 || merged[L - 1][1] < t0)
+            merged.push([t0, t1]);
+        else {
+            let lastMerged = merged[L - 1];
+            lastMerged[1] = Math.max(lastMerged[1], t1);
+        }
+    });
+
+    // map interval to merged-index
+    let index = [];
+    intervals.forEach(interval => {
+        let found = false;
+        for (let i = 0; i < merged.length; ++i) {
+            const mt = merged[i];
+            if (mt[0] <= interval[0] && interval[1] <= mt[1]) {
+                index.push(i);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            throw 'Cannot found range!';
+    });
+
+    return { 'merged': merged, 'index': index };
+}
+
 /**
  * 从json中提取出data字段
  *
@@ -8,37 +51,21 @@
  */
 function API_GpsFileListReqToArray(inputJson) {
     let j = JSON.parse(inputJson);
-    let ret = new Array();
+    let ret = [];
     if (0 == j.errcode) {
-        let file = JSON.parse(j.data).file;
-        let lastStartTime = 0;
-        let startTime, endTime;
-        let f, filename;
-        let lastArrayItem = undefined;
-        for (let i = 0; i < file.length; i++) {
-            f = file[i];
-            //console.log(f);
-            startTime = parseInt(f.starttime);
-            endTime = parseInt(f.endtime);
+        const file = JSON.parse(j.data).file;
+        const timespan = file.map(f => [parseInt(f.starttime), parseInt(f.endtime), f.name]);
+        const mergedResult = mergeIntervals(timespan);
+        const mergedTimespan = mergedResult['merged'];
+        const mergedIndex = mergedResult['index'];
 
-            if (endTime !== lastStartTime) {
-                lastArrayItem = {
-                    'from': startTime,
-                    'to': endTime,
-                    'filename': new Array()
-                };
-                ret.push(lastArrayItem);
-            } else {
-                lastArrayItem['from'] = startTime;
-            }
-
-            filename = f.name;
-            lastArrayItem['filename'].push(filename);
-            lastStartTime = startTime;
-        }
+        ret = mergedTimespan.map(m => ({ 'from': m[0], 'to': m[1], 'filename': [] }));
+        mergedIndex.forEach((mergedTimespanIdx, timespanIdx) => {
+            ret[mergedTimespanIdx]['filename'].push(timespan[timespanIdx][2]);
+        });
     }
 
-    ret.forEach(function (i) { i['filename'].reverse(); });
+    ret.forEach(function (i) { i['filename'].sort(); });
     return ret;
 }
 
@@ -164,6 +191,9 @@ function gpxToPathDict(gpxFileContent, maxLineCount, newline) {
 }
 
 /* for test only 1 */
+// const testTimeSpan = [[1, 2], [3, 5], [6, 10], [0, 1], [0, 3]];
+// console.log(mergeIntervals(testTimeSpan));
+
 // let testInputJson = '{"errcode":0,"data":"{\\"num\\":17,\\"file\\":[{\\"index\\":\\"0\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613931135\\",\\"endtime\\":\\"1613931512\\",\\"name\\":\\"20210221181215_0377.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"1\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930655\\",\\"endtime\\":\\"1613931135\\",\\"name\\":\\"20210221180415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"2\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613930175\\",\\"endtime\\":\\"1613930655\\",\\"name\\":\\"20210221175615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"3\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929695\\",\\"endtime\\":\\"1613930175\\",\\"name\\":\\"20210221174815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"4\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613929215\\",\\"endtime\\":\\"1613929695\\",\\"name\\":\\"20210221174015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"5\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928735\\",\\"endtime\\":\\"1613929215\\",\\"name\\":\\"20210221173215_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"6\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613928255\\",\\"endtime\\":\\"1613928735\\",\\"name\\":\\"20210221172415_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"7\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927775\\",\\"endtime\\":\\"1613928255\\",\\"name\\":\\"20210221171615_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"8\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613927295\\",\\"endtime\\":\\"1613927775\\",\\"name\\":\\"20210221170815_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"9\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926815\\",\\"endtime\\":\\"1613927295\\",\\"name\\":\\"20210221170015_0480.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"10\\",\\"type\\":\\"49\\",\\"starttime\\":\\"1613926388\\",\\"endtime\\":\\"1613926815\\",\\"name\\":\\"20210221165308_0427.git\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"11\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931812\\",\\"endtime\\":\\"1613931872\\",\\"name\\":\\"20210221182332_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"12\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931752\\",\\"endtime\\":\\"1613931812\\",\\"name\\":\\"20210221182232_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"13\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931692\\",\\"endtime\\":\\"1613931752\\",\\"name\\":\\"20210221182132_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"14\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931632\\",\\"endtime\\":\\"1613931692\\",\\"name\\":\\"20210221182032_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"15\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931572\\",\\"endtime\\":\\"1613931632\\",\\"name\\":\\"20210221181932_0060.gpx\\",\\"parentfile\\":\\"\\"},{\\"index\\":\\"16\\",\\"type\\":\\"48\\",\\"starttime\\":\\"1613931512\\",\\"endtime\\":\\"1613931572\\",\\"name\\":\\"20210221181832_0060.gpx\\",\\"parentfile\\":\\"\\"}]}"}';
 // console.log(API_GpsFileListReqToArray(testInputJson));
 

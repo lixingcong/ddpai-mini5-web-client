@@ -198,7 +198,7 @@ function exportToKml(isSingleFile) {
 	if (pathDictKeys.length > 0) {
 		// 分割
 		let pathDictKeysGrouped = [];
-		pathDictKeys = pathDictKeys.sort();
+		pathDictKeys.sort();
 		let splitPathThreshold = splitPathThresholdSecond();; // s
 		let lastTimestamp = 0;
 		let lastGroup = new Array();
