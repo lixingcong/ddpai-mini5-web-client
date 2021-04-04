@@ -261,7 +261,7 @@ function exportToKml(isSingleFile) {
 
 		function appendKmlResult(kmlContent, filename, pointCount, duration) {
 			filename += '.kml';
-			let blob = new Blob([kmlContent], {type : 'application/vnd.google-earth.kml+xml'});
+			let blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
 			let newLink = $('<a>', {
 				text: filename,
 				download: filename,
@@ -286,7 +286,9 @@ function exportToKml(isSingleFile) {
 			let g = undefined;
 			pathDictKeysGrouped.forEach((keys, idx) => {
 				setProgress(idx / pathDictKeysGrouped.length);
-				g = kmlGroupContent(pathDict, keys, idx + 1);
+				const readableIdx = idx + 1;
+				const idxStr = (readableIdx > 9 ? readableIdx : ('0' + readableIdx));
+				g = kmlGroupContent(pathDict, keys, idxStr);
 				kml += g['kml'];
 				if (tsFrom > g['tsFrom'])
 					tsFrom = g['tsFrom'];
