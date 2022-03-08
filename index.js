@@ -96,7 +96,9 @@ $('#fetch-gps-file-list').click(function () {
 			let innerHtml = '<table>\n';
 			const multiSelect = '<a href="javascript:void(0)" id="table-multiselect-href">全选</a>';
 			const copyAllUrls = '<a href="javascript:copyUrls(-1)" >时间 URL</a>';
-			innerHtml += '<thead><tr><th>日期</th><th>' + copyAllUrls + '</th><th>时长</th><th>' + multiSelect + '</th></tr></thead>\n';
+			const wholeDaySelectHelp = '<span class="help-tip"><p>点击超链接，可快速勾选该行所有记录</p></span>';
+			const copyAllUrlsHelp = '<span class="help-tip"><p>点击超链接，可以导出下载git/gpx原始文件地址<br/>单击标题栏，则导出已勾选的多行<br/>单击某行，则只导出该行</p></span>';
+			innerHtml += '<thead><tr><th>日期' + wholeDaySelectHelp + '</th><th>' + copyAllUrls + copyAllUrlsHelp + '</th><th>时长</th><th>' + multiSelect + '</th></tr></thead>\n';
 			innerHtml += '<tbody>\n';
 			let from, fromHref, to, duration, button, checkBox;
 
@@ -201,7 +203,7 @@ function exportToKml(isSingleFile) {
 
 		// console.log(pathDictKeysGrouped);
 
-		const fmt = 'MM月dd日hh时mm分';
+		const fmt = 'yyyy-MM-dd_hhmm';
 		function kmlGroupContent(pathDict, pathDictKeys, index) {
 			const tsFrom = pathDictKeys[0];
 			const tsFromStr = timestampToString(tsFrom, fmt, 0);
@@ -294,7 +296,6 @@ function exportToKml(isSingleFile) {
 			kmlFileList.append(pathHint);
 		} else {
 			let kml = undefined;
-			let filename = undefined;
 			let g = undefined;
 			pathDictKeysGrouped.forEach((keys, idx) => {
 				g = kmlGroupContent(gpxContents, keys, '');
@@ -600,11 +601,11 @@ $('#fetch-gps-file-upload').on('change', function () {
  * 转成指数刻度
  *
  * @param {number} inputVal 输入值
- * @param {*} inputMinVal 输入值最小值，若输入值等于此值，会返回0
- * @param {*} inputMaxVal 输入值最大值，若输入值等于此值，会返回1
- * @param {*} base 指数的基，如Math.E
- * @param {*} baseMinX 图像最左侧的X，必须为正数。指数函数中取[-baseMiX, 0]这一段图像作为刻度
- * @returns {*} 返回值的范围[0,1]
+ * @param {number} inputMinVal 输入值最小值，若输入值等于此值，会返回0
+ * @param {number} inputMaxVal 输入值最大值，若输入值等于此值，会返回1
+ * @param {number} base 指数的基，如Math.E
+ * @param {number} baseMinX 图像最左侧的X，必须为正数。指数函数中取[-baseMiX, 0]这一段图像作为刻度
+ * @returns {array} 返回值的范围[0,1]
  */
 function scaleToIndex(inputVal, inputMinVal, inputMaxVal, base, baseMinX) {
 	if (inputVal <= inputMinVal)
