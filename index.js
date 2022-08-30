@@ -9,6 +9,7 @@ var urlAPIGpsFileListReq = serverHostUrl + '/cmd.cgi?cmd=API_GpsFileListReq';
 // gps arrays
 var gpsFileListReq = [];
 var gpxContents = {}; // 字典，为timestamp到GPS的映射
+var gpxPreprocessContents = {}; // 字典，为startTime到gpx原文件内容的映射（只保留GPGGA和GPRMC行）
 
 // miscs
 var dateObj = new Date();
@@ -65,6 +66,13 @@ function byteToHumanReadableSize(bytes) {
 	if (bytes == 0) return '0B';
 	let i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
 	return (bytes / Math.pow(1024, i)).toFixed(1) + sizes[i];
+}
+
+function isObjectEmpty(obj){
+	// https://stackoverflow.com/questions/679915/how-do-i-test-for-an-empty-javascript-object
+	for(let i in obj)
+		return false;
+	return true;
 }
 
 $('#fetch-gps-file-list').click(function () {
@@ -331,8 +339,9 @@ function promiseReadBlob(blob, isText) {
 
 function promiseReadGpx(filename, blob) {
 	return promiseReadBlob(blob, true).then((textData) => {
-		const convertedDict = gpxToPathDict(textData, 150, '\n');
-		gpxContents = Object.assign({}, gpxContents, convertedDict);
+		const p = preprocessRawGpxFile(textData, 160, '\n');
+		if(!isObjectEmpty(p))
+			gpxPreprocessContents[p['startTime']] = p['content'];
 		refreshDownloadProgress();
 		return Promise.resolve();
 	});
@@ -424,10 +433,21 @@ const parseGitAndGpxFromBlob = (filename, blob) => {
 
 function beforeDownloadGpsPaths() {
 	gpxContents = {};
+	gpxPreprocessContents = {};
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	clearErrors();
 	setProgress(-1);
+}
+
+function mergePreprocessed(){
+	// merge all preprocess gpx file content into a single dict
+	let gpxPreprocessTimestamps = Object.keys(gpxPreprocessContents);
+	gpxPreprocessTimestamps.sort();
+	let concated = [];
+	gpxPreprocessTimestamps.forEach(ts => { concated = concated.concat(gpxPreprocessContents[ts]); });
+	gpxContents = gpxToPathDict(concated);
+	gpxPreprocessContents = {}; // clean up
 }
 
 // 参数idxes为整数的数组
@@ -457,6 +477,8 @@ function downloadGpsPaths(idxes) {
 				appendError(r.reason);
 			}
 		});
+
+		mergePreprocessed();
 		setProgress(-2);
 		refreshDownloadProgress(now() - costTimestampBegin);
 	});
@@ -465,6 +487,7 @@ function downloadGpsPaths(idxes) {
 $('.set-gpx-src').click(function () {
 	// before download Gps Paths
 	gpxContents = {};
+	gpxPreprocessContents = {};
 	$('#kmlFileList').empty();
 	$('#infoList').empty();
 	clearErrors();
@@ -513,6 +536,8 @@ $('.set-gpx-src').click(function () {
 					appendError(r.reason);
 				}
 			});
+
+			mergePreprocessed();
 			setProgress(-2);
 			refreshDownloadProgress(now() - costTimestampBegin);
 		});
@@ -541,8 +566,10 @@ function clearErrors() {
 }
 
 function refreshDownloadProgress(costTime = -1) {
-	let finshedText = (costTime >= 0 ? '，已下载完毕（耗时' + costTime + 'ms）' : '');
-	$('#infoList').html('原始点位数：' + Object.keys(gpxContents).length + finshedText + '<br/>');
+	const finshedText = (costTime >= 0 ? '，已下载完毕（耗时' + costTime + 'ms）' : '');
+	const pointTitle = (costTime >= 0 ? '原始点位数：' : '预处理：');
+	const pointCount = (costTime >= 0 ? Object.keys(gpxContents).length : Object.keys(gpxPreprocessContents).length);
+	$('#infoList').html(pointTitle + pointCount + finshedText + '<br/>');
 }
 
 function copyUrls(row) {
@@ -672,8 +699,7 @@ function setProgress(value) {
 	}
 }
 
-// lat纬度 lon经度，返回字符串
-function wgs84Distance(lat1, lon1, lat2, lon2) {
+function wgs84DistanceMeter(lat1, lon1, lat2, lon2) {
 	const deg2rad = d => d * Math.PI / 180.0;
 	const dx = lon1 - lon2;
 	const dy = lat1 - lat2;
@@ -682,6 +708,12 @@ function wgs84Distance(lat1, lon1, lat2, lon2) {
 	const Ly = 6367000.0 * deg2rad(dy);
 	const meter = Math.sqrt(Lx * Lx + Ly * Ly);
 
+	return meter;
+}
+
+// lat纬度 lon经度，返回字符串
+function wgs84Distance(lat1, lon1, lat2, lon2) {
+	const meter = wgs84DistanceMeter(lat1, lon1, lat2, lon2);
 	if (meter > 1000)
 		return (meter / 1000).toFixed(1) + '公里';
 	return Math.trunc(meter) + '米';
