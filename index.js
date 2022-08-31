@@ -17,6 +17,10 @@ var timestampOffset = dateObj.getTimezoneOffset() * 60000;
 var errorCount = 0;
 var tableMulitselStatus = true;
 
+// params
+const PathSpeedThreshold = 1.5;
+const PathDistanceThreshold = 50;
+
 Date.prototype.format = function (fmt) {
 	// https://blog.scottchayaa.com/post/2019/05/27/javascript_date_memo
 	let weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -251,7 +255,7 @@ function exportToKml(isSingleFile) {
 			return { 'kml': kml, 'filename': filename, 'pointCount': pathDictKeys.length, 'tsFrom': tsFrom, 'tsTo': tsTo };
 		}
 
-		function appendKmlResult(kmlContent, filename, pointCount, tsFrom, tsTo) {
+		function appendKmlResult(kmlContent, filename, pointCount, tsFrom, tsTo, tsAll) {
 			filename += '.kml';
 			let blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
 			let newLink = $('<a>', {
@@ -261,13 +265,15 @@ function exportToKml(isSingleFile) {
 			});
 
 			kmlFileList.append(newLink);
-			let kmlHint = '<br/>文件大小' + byteToHumanReadableSize(blob.size) + '，点位' + pointCount;
+			let kmlHint = '<br/>' + byteToHumanReadableSize(blob.size) + '，' + pointCount + '点';
 			const duration = tsTo - tsFrom;
 			if (duration > 0) {
-				kmlHint += '，持续' + secondToHumanReadableString(duration);
+				kmlHint += '，耗时' + secondToHumanReadableString(duration);
 				const g1 = gpxContents[tsFrom];
 				const g2 = gpxContents[tsTo];
-				kmlHint += '，直线' + wgs84Distance(g1['lat'], g1['lon'], g2['lat'], g2['lon']);
+				kmlHint += '，直线' + meterToString(wgs84PointDistance(g1['lat'], g1['lon'], g2['lat'], g2['lon']));
+				if(tsAll.length > 0)
+					kmlHint += '，里程' + meterToString(wgs84PathDistance(tsAll, PathSpeedThreshold, PathDistanceThreshold));
 			}
 			kmlFileList.append(kmlHint + '<br/>');
 		}
@@ -290,7 +296,10 @@ function exportToKml(isSingleFile) {
 				const thisTsTo = g['tsTo'];
 				const g1 = gpxContents[thisTsFrom];
 				const g2 = gpxContents[thisTsTo];
-				pathHint += '轨迹' + idxStr + '，' + simpleTimestampToString(thisTsFrom, thisTsTo) + '，' + secondToHumanReadableString(thisTsTo - thisTsFrom) + '，直线' + wgs84Distance(g1['lat'], g1['lon'], g2['lat'], g2['lon']) + '<br>';
+				pathHint += '轨迹' + idxStr + '，' + simpleTimestampToString(thisTsFrom, thisTsTo) + '，' + secondToHumanReadableString(thisTsTo - thisTsFrom);
+				pathHint += '，直线' + meterToString(wgs84PointDistance(g1['lat'], g1['lon'], g2['lat'], g2['lon']));
+				pathHint += '，里程' + meterToString(wgs84PathDistance(keys, PathSpeedThreshold, PathDistanceThreshold)) + '<br>';
+
 				kml += g['kml'];
 				if (tsFrom > thisTsFrom)
 					tsFrom = thisTsFrom;
@@ -300,7 +309,7 @@ function exportToKml(isSingleFile) {
 
 			const filename = tsFromToString(tsFrom, tsTo) + '_轨迹共' + pathDictKeysGrouped.length + '条';
 			kml = kmlHead(filename, '文件夹') + kml + kmlTail();
-			appendKmlResult(kml, filename, pathDictKeys.length, tsFrom, tsTo);
+			appendKmlResult(kml, filename, pathDictKeys.length, tsFrom, tsTo, []);
 			kmlFileList.append(pathHint);
 		} else {
 			let kml = undefined;
@@ -309,7 +318,7 @@ function exportToKml(isSingleFile) {
 				g = kmlGroupContent(gpxContents, keys, '');
 				const filename = tsFromToString(g['tsFrom'], g['tsTo']) + '_轨迹';
 				kml = kmlHead(filename, '文件夹') + g['kml'] + kmlTail();
-				appendKmlResult(kml, filename, g['pointCount'], g['tsFrom'], g['tsTo']);
+				appendKmlResult(kml, filename, g['pointCount'], g['tsFrom'], g['tsTo'], keys);
 			});
 		}
 	} else {
@@ -699,7 +708,8 @@ function setProgress(value) {
 	}
 }
 
-function wgs84DistanceMeter(lat1, lon1, lat2, lon2) {
+// lat纬度 lon经度 返回数字（单位：米）
+function wgs84PointDistance(lat1, lon1, lat2, lon2) {
 	const deg2rad = d => d * Math.PI / 180.0;
 	const dx = lon1 - lon2;
 	const dy = lat1 - lat2;
@@ -711,12 +721,41 @@ function wgs84DistanceMeter(lat1, lon1, lat2, lon2) {
 	return meter;
 }
 
-// lat纬度 lon经度，返回字符串
-function wgs84Distance(lat1, lon1, lat2, lon2) {
-	const meter = wgs84DistanceMeter(lat1, lon1, lat2, lon2);
+// 将数字（单位：米）转成字符串
+function meterToString(meter) {
 	if (meter > 1000)
-		return (meter / 1000).toFixed(1) + '公里';
-	return Math.trunc(meter) + '米';
+		return (meter / 1000).toFixed(1) + 'km';
+	return Math.trunc(meter) + 'm';
+}
+
+// timestamps 升序的时间戳数组 属于gpxContents字典的键
+// speedThreshold 速度阈值，若某点瞬间速度大于该值（单位：km/h），则累积该位移
+// distanceThreshold 距离阈值，若与上一点的距离大于该值（单位：米），则累积该位移
+function wgs84PathDistance(timestamps, speedThreshold, distanceThreshold){
+	let distance = 0.0;
+	let lastLat = undefined;
+	let lastLon = undefined;
+	timestamps.forEach(ts => {
+		const g = gpxContents[ts];
+		const speed = ('speed' in g) ? g['speed'] : 0.0;
+		const lat = g['lat'];
+		const lon = g['lon'];
+
+		if (speed > speedThreshold) {
+			if (undefined !== lastLat)
+				distance += wgs84PointDistance(lastLat, lastLon, lat, lon); // 减少计算次数
+			lastLat = lat;
+			lastLon = lon;
+		} else {
+			const thisDistance = (undefined !== lastLat) ? wgs84PointDistance(lastLat, lastLon, lat, lon) : 0.0;
+			if (thisDistance > distanceThreshold) {
+				distance += thisDistance;
+				lastLat = lat;
+				lastLon = lon;
+			}
+		}
+	});
+    return distance;
 }
 
 loadArchiveFormats(['tar'], function () {
