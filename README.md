@@ -1,5 +1,7 @@
 # 导出记录仪中的轨迹到KML文件
 
+将本项目部署到某虚拟主机上，可以是github.io静态展示页，访问index.html即可。
+
 ## 导出KML方法
 
 GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打开本地gpx/git文件，提供给前端脚本处理。
@@ -22,7 +24,7 @@ GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打�
 
 此方法适用于已经有大段大段的数据（如长时间、长途轨迹的合集）
 
-- 无需连接记录仪WiFi，只需准备好gpx/git文件到某一个目录下。
+- 无需连接记录仪WiFi，只需准备好gpx/git文件到某一个目录下（gpx/git请保持原文件名）
 - 打开网页
 - 点击上方按钮：选择git和gpx文件（支持多选）
 - 点击中间按钮：使用本地文件，开始从本机下载原始数据
@@ -39,8 +41,8 @@ GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打�
 
 ## 工作原理
 
-- 盯盯拍记录仪是个HTTP服务器，只要连接到无线局域网下，经过App抓包，可以观察到API地址```http://193.168.0.1/cmd.cgi?cmd=API_GpsFileListReq```返回的是最近的GPS轨迹记录。也有网友对其抓包分析，如[这个博客](https://www.eionix.co.in/2019/10/10/reverse-engineer-ddpai-firmware.html)列出了几乎所有的API和使用VLC播放串流
-- 每段gps记录是gpx文件（纯文本）或者git文件（tar压缩包，内含多个gpx）
+- 盯盯拍记录仪提供了无线局域网接入点和HTTP服务器，连接该WiFi后，经过App抓包，可以观察到API地址```http://193.168.0.1/cmd.cgi?cmd=API_GpsFileListReq```返回的是最近的GPS轨迹记录。也有网友对其抓包分析，如[这个博客](https://www.eionix.co.in/2019/10/10/reverse-engineer-ddpai-firmware.html)列出了几乎所有的API和使用VLC播放串流
+- 每段gps记录是gpx文件（纯文本）或者git文件（tar压缩包，内含多个gpx），对应了U盘内的同名文件
 - gpx文件中以```$GPRMC```和```$GPGGA```开头的字段为GPS记录，参考[GPS-NMEA文档](http://aprs.gids.nl/nmea/)即可解析出每一个时刻对应的GPS位置（WGS84坐标系）
 - 参考[KML格式文档](https://developers.google.com/kml/documentation/kmlreference)即可导出完整的KML文件，可以在[Google Earth](https://earth.google.com/web/)中验证轨迹正确性
 

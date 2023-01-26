@@ -178,7 +178,7 @@ function now() {
 }
 
 function isFilenameGpxGit(filename) {
-	return filename.search(/\d{14}_\d{4}\.g(px|it)/i) >= 0;
+	return filename.search(/\d{14}_\d{4}(_D)?\.g(px|it)/i) >= 0;
 }
 
 function exportToKml(isSingleFile) {
@@ -436,7 +436,7 @@ const parseGitAndGpxFromBlob = (filename, blob) => {
 		return promiseReadGit(filename, blob);
 	else if (filename.endsWith('gpx'))
 		return promiseReadGpx(filename, blob);
-	return Promise.reject(new Error('Unsupport file type: ' + filename));
+	return Promise.reject(new Error('Filename suffix is neither gpx nor git: ' + filename));
 };
 // ---- promise 2 ----
 
@@ -536,7 +536,7 @@ $('.set-gpx-src').click(function () {
 			let filename = f.name;
 			if (isFilenameGpxGit(filename))
 				return parseGitAndGpxFromBlob(filename, f);
-			return Promise.reject(new Error('Unsupport file: ' + filename));
+			return Promise.reject(new Error('Filename is invalid: ' + filename));
 		});
 
 		Promise.allSettled(promises).then((results) => {
@@ -628,7 +628,7 @@ $('#fetch-gps-file-upload').on('change', function () {
 	Object.keys(files).forEach(function (fileIndex) {
 		let filename = files[fileIndex].name;
 		if (!isFilenameGpxGit(filename)) {
-			appendError('无效文件格式：' + filename);
+			appendError('Filename is invalid: ' + filename);
 		}
 	});
 });
