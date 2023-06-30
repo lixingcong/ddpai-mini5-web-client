@@ -6,18 +6,33 @@ function kmlHead(docName, folderName) {
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">\n\
 <Document><name>'+ docName + '</name>\n\
 <Style id="LineStyle"><LineStyle><color>C8FF963A</color><width>5</width></LineStyle></Style>\n\
-<Style id="TrackStyle"><LineStyle><color>C8FF3399</color><width>5</width></LineStyle></Style>\n\
-<Folder><name>'+ folderName + '</name>\n';
+<Style id="TrackStyle"><LineStyle><color>C8FF3399</color><width>5</width></LineStyle></Style>\n';
 }
 
 function kmlTail() {
-	return '</Folder></Document></kml>';
+	return '</Document></kml>';
 }
 
-function kmlPlacemarkHead(name, description, styleId) {
-	let s = '<Placemark><name>' + name + '</name><description>' + description + '</description>\n';
-	if (styleId)
+function kmlFolderHead(name){
+	return '<Folder><name>'+ name + '</name>\n';
+}
+
+function kmlFolderTail(){
+	return '</Folder>';
+}
+
+function kmlPlacemarkHead(name, description, styleId, timestampStr) {
+	let s = '<Placemark><name>' + name + '</name>';
+
+	if (description !== undefined)
+		s += '<description>' + description + '</description>';
+
+	if (styleId !== undefined)
 		s += '<styleUrl>#' + styleId + '</styleUrl>';
+
+	if (timestampStr !== undefined)
+		s += '<gx:TimeStamp>' + timestampStr + '</gx:TimeStamp>';
+
 	return s;
 }
 
@@ -30,6 +45,7 @@ function kmlPlacemarkPoint(lat, lon, precision) {
 }
 
 function kmlTrackHead() {
+	// GPGGA记录中的高度是海平面高度。因此需要在Track标签中设置altitudeMode为absolute
 	return '<gx:Track><altitudeMode>absolute</altitudeMode>\n';
 }
 
@@ -50,14 +66,11 @@ function kmlTrackCoord(lat, lon, alt, precision, timeStr) {
 }
 
 function kmlLineStringHead() {
-	return '<LineString><coordinates>\n'
+	return '<LineString><tessellate>1</tessellate><coordinates>\n'
 }
 
-function kmlLineStringCoord(lat, lon, precision, appendSpace) {
-	let s = lon.toFixed(precision) + ',' + lat.toFixed(precision);
-	if (appendSpace)
-		s += ' ';
-	return s;
+function kmlLineStringCoord(lat, lon, precision) {
+	return lon.toFixed(precision) + ',' + lat.toFixed(precision) + ' ';
 }
 
 function kmlLineStringTail() {
@@ -79,10 +92,10 @@ function kmlLineStringTail() {
 // 	+ kmlPlacemarkTail()
 // 	+ kmlPlacemarkHead('MyLineString', 'No', 'LineStyle')
 // 	+ kmlLineStringHead()
-// 	+ kmlLineStringCoord(22.688959, 113.918788, 6, true)
-// 	+ kmlLineStringCoord(22.689038, 113.918698, 6, true)
-// 	+ kmlLineStringCoord(22.689110, 113.918616, 6, true)
-// 	+ kmlLineStringCoord(22.689158, 113.918491, 6, false)
+// 	+ kmlLineStringCoord(22.688959, 113.918788, 6)
+// 	+ kmlLineStringCoord(22.689038, 113.918698, 6)
+// 	+ kmlLineStringCoord(22.689110, 113.918616, 6)
+// 	+ kmlLineStringCoord(22.689158, 113.918491, 6)
 // 	+ kmlLineStringTail()
 // 	+ kmlPlacemarkTail()
 // 	+ kmlTail();

@@ -83,7 +83,7 @@ function dddmmToDecimal(dddmm) {
     let dString = s0.substr(0, s0Len - 2);
     let mString = s0.substr(s0Len - 2) + '.' + s1;
     let d = parseFloat(dString);
-    let m = parseFloat(mString) / 60;
+    let m = parseFloat(mString) / 60.0;
     return d + m;
 }
 
