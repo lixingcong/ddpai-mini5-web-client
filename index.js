@@ -188,7 +188,7 @@ function now() {
 }
 
 function isFilenameGpxGit(filename) {
-	return filename.search(/\d{14}_\d{4}(_D)?\.g(px|it)/i) >= 0;
+	return filename.search(/\d{14}_\d{4}(_D|_T)?\.g(px|it)/i) >= 0;
 }
 
 function exportToKml(isSingleFile) {
