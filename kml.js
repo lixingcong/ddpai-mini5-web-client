@@ -1,123 +1,124 @@
 "use strict"
 
-function kmlHead(docName, folderName) {
+export {
+	head,
+	tail,
+	folderHead,
+	folderTail,
+	placemarkHead,
+	placemarkTail,
+	placemarkPoint,
+	trackHead,
+	trackTail,
+	multiTrackHead,
+	multiTrackTail,
+	trackCoord,
+	lineStringHead,
+	lineStringCoord,
+	lineStringTail,
+	AltitudeMode,
+	altitudeMode,
+	StyleId
+};
+
+import * as DF from './date-format.js';
+
+const kmlTs = (ts) => DF.timestampToString(ts, 'yyyy-MM-ddThh:mm:ssZ', true); // KML规范的GMT时区时间格式
+
+function head(docName) {
 	return '\
 <?xml version="1.0" encoding="UTF-8"?>\n\
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">\n\
 <Document><name>'+ docName + '</name>\n\
-<Style id="LineStyle"><LineStyle><color>C8FF963A</color><width>5</width></LineStyle></Style>\n\
-<Style id="TrackStyle"><LineStyle><color>C8FF3399</color><width>5</width></LineStyle></Style>\n';
+<Style id="BlueStyle"><LineStyle><color>A0FF0000</color><width>5</width></LineStyle></Style>\n\
+<Style id="GreenStyle"><LineStyle><color>D032FF30</color><width>5</width></LineStyle></Style>\n';
 }
 
-function kmlTail() {
-	return '</Document></kml>';
+function tail() {
+	return '</Document>\n</kml>';
 }
 
-function kmlFolderHead(name){
-	return '<Folder><name>'+ name + '</name>\n';
+function folderHead(name){
+	return '<Folder>\n<name>'+ name + '</name>\n';
 }
 
-function kmlFolderTail(){
-	return '</Folder>';
+function folderTail(){
+	return '</Folder>\n';
 }
 
-function kmlPlacemarkHead(name, description, styleId, timestampStr) {
+const StyleId = {
+	Line : 'GreenStyle',
+	Track: 'BlueStyle'
+};
+
+function placemarkHead(name, description, styleId, timestamp) {
 	let s = '<Placemark><name>' + name + '</name>';
 
-	if (description !== undefined)
+	if (undefined != description)
 		s += '<description>' + description + '</description>';
 
-	if (styleId !== undefined)
+	if (undefined != styleId)
 		s += '<styleUrl>#' + styleId + '</styleUrl>';
 
-	if (timestampStr !== undefined)
-		s += '<gx:TimeStamp>' + timestampStr + '</gx:TimeStamp>';
+	if (undefined != timestamp)
+		s += '<gx:TimeStamp>' + kmlTs(timestamp) + '</gx:TimeStamp>';
 
-	return s;
+	return s + '\n';
 }
 
-function kmlPlacemarkTail() {
+function placemarkTail() {
 	return '</Placemark>\n';
 }
 
-function kmlPlacemarkPoint(lat, lon, precision) {
-	return '<Point><coordinates>' + lon.toFixed(precision) + ',' + lat.toFixed(precision) + '</coordinates></Point>\n';
+function placemarkPoint(lat, lon, precision) {
+	return '<Point>\n<coordinates>' + lon.toFixed(precision) + ',' + lat.toFixed(precision) + '</coordinates>\n</Point>\n';
 }
 
-function kmlTrackHead() {
-	// GPGGA记录中的高度是海平面高度。因此需要在Track标签中设置altitudeMode为absolute
-	return '<gx:Track><altitudeMode>absolute</altitudeMode>\n';
+function trackHead() {
+	return '<gx:Track>\n';
 }
 
-function kmlTrackTail() {
+const AltitudeMode = {
+	// 海拔模式 https://developers.google.com/kml/documentation/altitudemode
+	RelativeToGround: 'relativeToGround', // 基于地球表面
+	Absolute: 'absolute', // 基于海平面
+	RelativeToSeaFloor: 'relativeToSeaFloor', // 基于主水体的底部
+	ClampToGround: 'clampToGround', //（此项作为默认值）海拔被忽略，沿地形放置在地面上
+	ClampToSeaFloor: 'clampToSeaFloor' // 海拔被忽略，沿地形放置在主水体的底部
+};
+
+// GPGGA记录中的高度是海平面高度。因此默认为absolute
+function altitudeMode(m = AltitudeMode.Absolute){
+	return '<altitudeMode>' + m + '</altitudeMode>\n';
+}
+
+function trackTail() {
 	return '</gx:Track>\n'
 }
 
-function kmlMultiTrackHead(interpolate) {
-	return '<gx:MultiTrack><altitudeMode>absolute</altitudeMode><gx:interpolate>' + (interpolate ? 1 : 0) + '</gx:interpolate>\n';
+function multiTrackHead() {
+	return '<gx:MultiTrack>\n<gx:interpolate>0</gx:interpolate>\n';
 }
 
-function kmlMultiTrackTail() {
+function multiTrackTail() {
 	return '</gx:MultiTrack>\n'
 }
 
-function kmlTrackCoord(lat, lon, alt, precision, timeStr) {
-	return '<when>' + timeStr + '</when><gx:coord>' + lon.toFixed(precision) + ' ' + lat.toFixed(precision) + ' ' + alt.toFixed(1) + '</gx:coord>\n';
+function trackCoord(lat, lon, alt, precision, timestamp) {
+	let s = '<when>' + kmlTs(timestamp) + '</when><gx:coord>' + lon.toFixed(precision) + ' ' + lat.toFixed(precision);
+	if(undefined != alt)
+		s += ' ' + alt.toFixed(1);
+	return s + '</gx:coord>\n';
 }
 
-function kmlLineStringHead() {
-	return '<LineString><tessellate>1</tessellate><coordinates>\n'
+function lineStringHead() {
+	return '<LineString><tessellate>1</tessellate>\n<coordinates>\n'
 }
 
-function kmlLineStringCoord(lat, lon, precision) {
+function lineStringCoord(lat, lon, precision) {
 	return lon.toFixed(precision) + ',' + lat.toFixed(precision) + ' ';
 }
 
-function kmlLineStringTail() {
-	return '</coordinates></LineString>\n'
+function lineStringTail() {
+	return '</coordinates>\n</LineString>\n'
 }
-
-/* for test only 1 */
-// let kmlSingleTrack = kmlHead('SingleTrack', 'FolderName')
-// 	+ kmlPlacemarkHead('MyPOI', 'POI description')
-// 	+ kmlPlacemarkPoint(22.688959, 113.918788, 6)
-// 	+ kmlPlacemarkTail()
-// 	+ kmlPlacemarkHead('MyTrack', 'No', 'TrackStyle')
-// 	+ kmlTrackHead()
-// 	+ kmlTrackCoord(22.688959, 113.918788, 0, 6, '2021-01-01T12:00:00Z')
-// 	+ kmlTrackCoord(22.689038, 113.918698, 0, 6, '2021-01-01T12:00:01Z')
-// 	+ kmlTrackCoord(22.689110, 113.918616, 0, 6, '2021-01-01T12:00:02Z')
-// 	+ kmlTrackCoord(22.689158, 113.918491, 0, 6, '2021-01-01T12:00:03Z')
-// 	+ kmlTrackTail()
-// 	+ kmlPlacemarkTail()
-// 	+ kmlPlacemarkHead('MyLineString', 'No', 'LineStyle')
-// 	+ kmlLineStringHead()
-// 	+ kmlLineStringCoord(22.688959, 113.918788, 6)
-// 	+ kmlLineStringCoord(22.689038, 113.918698, 6)
-// 	+ kmlLineStringCoord(22.689110, 113.918616, 6)
-// 	+ kmlLineStringCoord(22.689158, 113.918491, 6)
-// 	+ kmlLineStringTail()
-// 	+ kmlPlacemarkTail()
-// 	+ kmlTail();
-// console.log(kmlSingleTrack);
-
-// let kmlMultiTrack = kmlHead('MultiTrack', 'FolderName')
-// 	+ kmlPlacemarkHead('MyTrack', 'No')
-// 	+ kmlMultiTrackHead(false)
-// 	+ kmlTrackHead()
-// 	+ kmlTrackCoord(22.688959, 113.918788, 0, 6, '2021-01-01T12:00:00Z')
-// 	+ kmlTrackCoord(22.690038, 113.918698, 0, 6, '2021-01-01T12:00:01Z')
-// 	+ kmlTrackCoord(22.691110, 113.918616, 0, 6, '2021-01-01T12:00:02Z')
-// 	+ kmlTrackCoord(22.692158, 113.918491, 0, 6, '2021-01-01T12:00:03Z')
-// 	+ kmlTrackTail()
-// 	+ kmlTrackHead()
-// 	+ kmlTrackCoord(22.714165, 113.901165, 0, 6, '2021-01-01T12:01:00Z')
-// 	+ kmlTrackCoord(22.715059, 113.901159, 0, 6, '2021-01-01T12:01:01Z')
-// 	+ kmlTrackCoord(22.716950, 113.901150, 0, 6, '2021-01-01T12:01:02Z')
-// 	+ kmlTrackCoord(22.717844, 113.901140, 0, 6, '2021-01-01T12:01:03Z')
-// 	+ kmlTrackTail()
-// 	+ kmlMultiTrackTail()
-// 	+ kmlPlacemarkTail()
-// 	+ kmlTail();
-// console.log(kmlMultiTrack);
-/* for test only 2 */

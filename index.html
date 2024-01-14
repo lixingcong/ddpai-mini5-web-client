@@ -24,15 +24,6 @@
 
 		<div id="entryList"></div>
 
-		<div class="btn-container" style="display: none;">
-			<span class="btn-spacer">
-				<label><input type="checkbox" id="multicoord" name="gx_multicoord">多轨模式</label>
-			</span>
-			<span class="btn-spacer">
-				<label><input type="checkbox" id="interpolate" name="gx_interpolate">多轨插值</label>
-			</span>
-		</div>
-
 		<div class="btn-container">
 			<span class="btn-spacer">
 				<button class="set-gpx-src" value="0">使用记录仪已选</button>
@@ -43,16 +34,24 @@
 		</div>
 
 		<div class="btn-container">
+			<select id="select-export-format">
+				<option value="kml">导出KML</option>
+				<option value="gpx">导出GPX</option>
+			</select>
 			<span class="btn-spacer">
-				<button class="export-to-kml" value="0">导出单KML</button>
+				<button onclick="exportToTrack(true)">单文件</button>
 			</span>
 			<span class="btn-spacer">
-				<button class="export-to-kml" value="1">导出多KML</button>
+				<button onclick="exportToTrack(false)">多文件</button>
 			</span>
 		</div>
 
 		<details>
 			<summary>其它参数</summary>
+			<div class="btn-container">
+				<label><input type="checkbox" id="enable-export-track" checked="true"></input>导出轨迹</label>
+				<label><input type="checkbox" id="enable-export-line" checked="true"></input>导出线条</label>
+			</div>
 			<div class="btn-container">
 				<span class="btn-spacer">
 					分割间隔时长阈值：<label id="split-path-threshold-text"></label>
@@ -83,7 +82,7 @@
 			</div>
 		</details>
 
-		<div id="kmlFileList"></div>
+		<div id="exportedTrackList"></div>
 		<div id="progressBarDiv" style="display: none;">
 			<label>处理进度 </label>
 			<progress id="progressBar" value="-1"></progress>
@@ -96,10 +95,10 @@
 			<div id="errorListBody"></div>
 		</div>
 	</div>
-	<script src="RequestDecorator.js" type="text/javascript" charset="UTF-8"></script>
-	<script src="kml.js" type="text/javascript" charset="UTF-8"></script>
-	<script src="ddpai.js" type="text/javascript" charset="UTF-8"></script>
-	<script src="index.js" type="text/javascript" charset="UTF-8"></script>
+	<script src="index.js" type="module" charset="UTF-8"></script>
+	<script nomodule>
+		alert('JS加载失败：浏览器不支持ES-Module，请更新');
+	</script>
 </body>
 
 </html>

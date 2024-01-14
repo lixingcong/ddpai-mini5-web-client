@@ -1,5 +1,16 @@
 "use strict"
 
+export {
+    mergeIntervals,
+    API_GpsFileListReqToArray,
+    gpxToWayPointDict,
+    preprocessRawGpxFile,
+    dddmmToDecimal
+};
+
+import * as WP from './waypoint.js';
+
+const LocaTimestampOffset = (new Date()).getTimezoneOffset() * 60; // GMT与本地时区相差秒数，若东八区则该值为负数
 
 /**
  * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
@@ -55,7 +66,8 @@ function API_GpsFileListReqToArray(inputJson) {
     let ret = [];
     if (0 == j.errcode) {
         const file = JSON.parse(j.data).file;
-        const timespan = file.map(f => [parseInt(f.starttime), parseInt(f.endtime), f.name]);
+        // 注意盯盯拍固件中timestamp的有时差，可能是程序员写死了。
+        const timespan = file.map(f => [parseInt(f.starttime) + LocaTimestampOffset, parseInt(f.endtime) + LocaTimestampOffset, f.name]);
         const mergedResult = mergeIntervals(timespan);
         const mergedTimespan = mergedResult['merged'];
         const mergedIndex = mergedResult['index'];
@@ -92,9 +104,9 @@ function dddmmToDecimal(dddmm) {
  * 经纬度用南纬S是负，北纬N是正，东经E是正，西经W是负
  *
  * @param {array} gpxFileContents gpx文件内容数组，每个元素为整行纯文本（已经筛选好并按照时间顺序的内容）
- * @return {array} 字典，key为timestamp，value为timestamp时刻的位置信息，类型是字典，具体字段见代码
+ * @return {array} 字典，timestamp => Waypoint对象
  */
-function gpxToPathDict(gpxFileContents) {
+function gpxToWayPointDict(gpxFileContents) {
     let ret = {};
     const comma = ',';
     let timestamp = 0; // 作为ret字典的键
@@ -105,12 +117,18 @@ function gpxToPathDict(gpxFileContents) {
     let GPRMCTime = undefined; // 保存上次GPRMC时间信息，转成纯数字
     let GPGGATime = undefined; // 保存上次GPGGA时间信息，转成纯数字
 
-    function mergeValueToDict(key, value){
-        if(key in ret){
-            let existValue = ret[key];
-            Object.keys(value).forEach(k => { existValue[k]=value[k]; });
-        }else
-            ret[key]=value;
+    function updateReturnValue(timestamp, keyValueDict){
+        let wp = undefined;
+
+        if(timestamp in ret)
+            wp = ret[timestamp];
+        else{
+            wp = new WP.WayPoint();
+            ret[timestamp] = wp;
+            wp.timestamp = timestamp;
+        }
+
+        Object.keys(keyValueDict).forEach(k => { wp[k] = keyValueDict[k]; });
     }
 
     gpxFileContents.forEach(line => {
@@ -158,7 +176,7 @@ function gpxToPathDict(gpxFileContents) {
             dateObj.setUTCHours(hour, minute, second, 0);
             timestamp = Math.trunc(dateObj.getTime() / 1000);
 
-            mergeValueToDict(timestamp, {
+            updateReturnValue(timestamp, {
                 'lat': dddmmToDecimal(lat) * latSgn,
                 'lon': dddmmToDecimal(lon) * lonSgn,
                 'speed': 1.852 * knots, // 速度单位：km/h
@@ -166,7 +184,7 @@ function gpxToPathDict(gpxFileContents) {
             });
 
             if(GPGGATime === GPRMCTime){
-                mergeValueToDict(timestamp, GPGGAResult);
+                updateReturnValue(timestamp, GPGGAResult);
                 GPGGATime = undefined; // reset
                 GPGGAResult = undefined;
             }
@@ -202,8 +220,15 @@ function gpxToPathDict(gpxFileContents) {
                 'altitude' : parseFloat(altitude) // 海拔高度单位：米
             };
             if (GPGGATime === GPRMCTime && timestamp != 0)
-                mergeValueToDict(timestamp, GPGGAResult); // 属于正常情况，即GPGGA那一行，出现在GPRMC后
+                updateReturnValue(timestamp, GPGGAResult); // 属于正常情况，即GPGGA那一行，出现在GPRMC后
         }
+    });
+
+    // 丢弃无效的内容
+    const timestamps = Object.keys(ret);
+    timestamps.forEach(timestamp => {
+        if(!ret[timestamp].isValid())
+            delete ret[timestamp];
     });
 
     return ret;

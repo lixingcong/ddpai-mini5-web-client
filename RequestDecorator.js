@@ -1,3 +1,7 @@
+"use strict"
+
+export { RequestDecorator };
+
 // https://github.com/chenjigeng/requestDecorator/blob/master/src/RequestDecorator.js
 
 class RequestDecorator {

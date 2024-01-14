@@ -1,16 +1,19 @@
-# 导出记录仪中的轨迹到KML文件
+# 导出记录仪中的轨迹到KML/GPX文件
 
 将本项目部署到某虚拟主机上，可以是github.io静态展示页，访问index.html即可。
 
-## 导出KML方法
+## 导出方法
 
-GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打开本地gpx/git文件，提供给前端脚本处理。
+GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打开本地gpx/git文件，提供给前端脚本处理。这两种方法都可以导出轨迹，只使用一种即可。
 
-这两种方法都可以导出轨迹，只使用一种即可。
+注意：
+
+- 本地gpx是指USB连接记录仪拷贝出来的文件，是固定大小的纯文本，不是真正的GPX/XML格式。
+- 本地git是指USB连接记录仪拷贝出来的文件，本身是tar格式压缩包，内含多个gpx文件。
 
 ### 从记录仪中获取轨迹文件
 
-- PC端Chrome浏览器（Android则使用Yandex）安装[CORS扩展](https://mybrowseraddon.com/access-control-allow-origin.html)（跨站请求）
+- PC端Chrome浏览器（Android端可用Firefox或者Yandex）安装[CORS扩展](https://mybrowseraddon.com/access-control-allow-origin.html)（跨站请求）
 - 启用CORS扩展中的```Access-Control-Allow-Headers, Access-Control-Allow-Credentials, Access-Control-Allow-Origin:*```标志，用于篡改服务器repsonse头部
 - 打开网页（因为下一步连接WiFi后就没网了）
 - 连接记录仪WiFi
@@ -45,5 +48,10 @@ GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打�
 - 每段gps记录是gpx文件（纯文本）或者git文件（tar压缩包，内含多个gpx），对应了U盘内的同名文件
 - gpx文件中以```$GPRMC```和```$GPGGA```开头的字段为GPS记录，参考[GPS-NMEA文档](http://aprs.gids.nl/nmea/)即可解析出每一个时刻对应的GPS位置（WGS84坐标系）
 - 参考[KML格式文档](https://developers.google.com/kml/documentation/kmlreference)即可导出完整的KML文件，可以在[Google Earth](https://earth.google.com/web/)中验证轨迹正确性
+- 参考[GPX格式文档](https://wiki.openstreetmap.org/wiki/GPX)，并在OpenStreetMap中上传私人轨迹，以验证轨迹正确性。
 
 以上就是大致原理，可以根据基本原理做出简单的App，实现参数控制、回放视频等功能。鉴于精力有限，仅实现了基本的轨迹导出功能。
+
+## 其它笔记
+
+- ```API_GpsFileListReq```这个返回的json中的时间戳格式并不是GMT+0，而是GMT+8，可能是固件开发者把偏移写死了，需要手动调整为GMT+0
