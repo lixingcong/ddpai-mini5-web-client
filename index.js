@@ -144,28 +144,9 @@ function exportToTrack(singleFile) {
 	exportedTrackList.empty();
 	$('#infoList').empty();
 	if (timestamps.length > 0) {
-		let timestampsGrouped = []; // 按时间分割完毕的结果
+		// 按时间差分阈值分割完毕的结果
+		let timestampsGrouped = UTILS.splitOrderedNumbersByThreshold(timestamps, splitPathThresholdSecond());
 
-		// 分割时间段
-		{
-			let splitPathThreshold = splitPathThresholdSecond(); // s
-			let lastTimestamp = 0;
-			let lastGroup = new Array(); // 'new Array()' vs '[]' ?
-			if (splitPathThreshold < 1) { // 小于1表示不分割
-				splitPathThreshold = Infinity;
-				timestampsGrouped.push(lastGroup);
-			}
-			timestamps.forEach(timestamp => {
-				if (timestamp - lastTimestamp > splitPathThreshold) {
-					lastGroup = new Array();
-					timestampsGrouped.push(lastGroup);
-				}
-				lastGroup.push(timestamp);
-				lastTimestamp = timestamp;
-			});
-		}
-
-		// console.log(timestampsGrouped);
 		function appendTrackResult(trackContent, filename, pointCount, tsFrom, tsTo, trackDistance) {
 			let blob = new Blob([trackContent]);
 			let newLink = $('<a>', {

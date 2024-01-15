@@ -7,7 +7,8 @@ export {
     secondToHumanReadableString,
     byteToHumanReadableSize,
     isObjectEmpty,
-    zeroPad
+    zeroPad,
+	splitOrderedNumbersByThreshold
 };
 
 // 将数字（单位：米）转成字符串
@@ -82,3 +83,26 @@ function zeroPad(num, places) {
     var zero = places - num.toString().length + 1;
     return Array(+(zero > 0 && zero)).join("0") + num;
 }
+
+// 输入升序一维数组，输出按相邻元素的差值的阈值分割的二维数组
+// 用于组合相近的timestamp为一个组
+function splitOrderedNumbersByThreshold(numbers, threshold)
+{
+    if (threshold < 1)  // 小于1表示不分割
+        return [numbers];
+
+    let ret = [];
+    let lastNumber = Number.MIN_SAFE_INTEGER;
+    let lastGroup = undefined;
+
+    numbers.forEach(number => {
+        if (number - lastNumber > threshold) {
+            lastGroup = new Array();
+            ret.push(lastGroup);
+        }
+        lastGroup.push(number);
+        lastNumber = number;
+    });
+
+    return ret;
+};

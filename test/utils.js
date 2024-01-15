@@ -55,3 +55,11 @@ console.log('zeroPad(15,1)='+UTILS.zeroPad(15,1));
 console.log('zeroPad(15,2)='+UTILS.zeroPad(15,2));
 console.log('zeroPad(15,3)='+UTILS.zeroPad(15,3));
 split();
+
+const timestamps  = [0,1,2,5,6,9,13,14,15,17,20,23,26,27,31,35,36];
+console.log('splitOrderedNumbersByThreshold(): original array:');
+console.log(timestamps);
+[0,1,2,3,4].forEach(i => {
+    process.stdout.write('splitOrderedNumbersByThreshold('+i+'):');
+    console.log(UTILS.splitOrderedNumbersByThreshold(timestamps, i));
+});
