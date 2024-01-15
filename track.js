@@ -1,6 +1,7 @@
 "use strict"
 
 export {
+    Track,
 	toFile,
     distance
 };
@@ -10,10 +11,19 @@ import * as GPX from './gpx.js';
 import * as DF from './date-format.js';
 import * as UTILS from './utils.js';
 
+class Track
+{
+    constructor(wayPoints)
+    {
+        this.wayPoints = wayPoints; // 按时间先后顺序的点位数组（WayPoint类型
+        this.distance = distance(wayPoints); // 轨迹长度(米)
+    }
+}
+
 /**
  * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
  *
- * @param {tracks} 轨迹二维数组：第一维表示轨迹数，第二维为按时间先后顺序的点位数组（WayPoint类型）
+ * @param {tracks} 轨迹数组：数组长度表示轨迹数，每个元素为Track对象
  * @param {format} 文件格式，有效值：'kml'
  * @param {description} 文件描述（注释）
  * @param {enableTrack} 布尔值，是否导出轨迹（含完整时间信息）
@@ -44,11 +54,14 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
     if('kml' == format){
         let body = '';
 
-        tracks.forEach(wayPoints => {
+        tracks.forEach(track => {
+            const distanceStr = ', ' + UTILS.meterToString(track.distance);
+            const wayPoints = track.wayPoints;
+
             const WayPointCount = wayPoints.length;
             if(WayPointCount <= 0)
                 return; // ignore the empty wayPoints
-            
+
             const WayPointFrom = wayPoints[0];
             const WayPointTo = wayPoints[WayPointCount-1];
             const FolderDesciption = localTs(WayPointFrom.timestamp) + ' to ' + localTs(WayPointTo.timestamp);
@@ -73,7 +86,7 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
 
             // 连线
             if(enableLine){
-                body += KML.placemarkHead('Line' + trackIndexSuffix + FolderDesciption, undefined, KML.StyleId.Line, undefined);
+                body += KML.placemarkHead('Line' + trackIndexSuffix + FolderDesciption + distanceStr, undefined, KML.StyleId.Line, undefined);
                 body += KML.lineStringHead();
 
                 wayPoints.forEach(wayPoint => {
@@ -86,7 +99,7 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
 
             // 轨迹
             if(enableTrack){
-                body += KML.placemarkHead('Track' + trackIndexSuffix + FolderDesciption, undefined, KML.StyleId.Track, undefined);
+                body += KML.placemarkHead('Track' + trackIndexSuffix + FolderDesciption + distanceStr, undefined, KML.StyleId.Track, undefined);
                 body += KML.trackHead();
                 body += KML.altitudeMode(KML.AltitudeMode.Absolute);
                 wayPoints.forEach(wayPoint => {
@@ -106,7 +119,10 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
     } else if ('gpx' == format) {
         let body = '';
 
-        tracks.forEach(wayPoints => {
+        tracks.forEach(track => {
+            const distanceStr = ', ' + UTILS.meterToString(track.distance);
+            const wayPoints = track.wayPoints;
+
             const WayPointCount = wayPoints.length;
             if (WayPointCount <= 0)
                 return; // ignore the empty wayPoints
@@ -127,7 +143,7 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
 
             // 连线
             if (enableLine) {
-                body += GPX.rteHead('Route' + trackIndexSuffix + FolderDesciption);
+                body += GPX.rteHead('Route' + trackIndexSuffix + FolderDesciption + distanceStr);
                 wayPoints.forEach(wayPoint => {
                     body += GPX.rtept(wayPoint.lat, wayPoint.lon, LatLonDecimalPrecision);
                 });
@@ -136,7 +152,7 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
 
             // 轨迹
             if (enableTrack) {
-                body += GPX.trkHead('Track' + trackIndexSuffix + FolderDesciption);
+                body += GPX.trkHead('Track' + trackIndexSuffix + FolderDesciption + distanceStr);
                 wayPoints.forEach(wayPoint => {
                     body += GPX.trkpt(wayPoint.lat, wayPoint.lon, wayPoint.altitude, LatLonDecimalPrecision, wayPoint.timestamp);
                 });

@@ -166,7 +166,7 @@ function exportToTrack(singleFile) {
 		}
 
 		// console.log(timestampsGrouped);
-		function appendTrackResult(trackContent, filename, pointCount, tsFrom, tsTo, wayPoints) {
+		function appendTrackResult(trackContent, filename, pointCount, tsFrom, tsTo, trackDistance) {
 			let blob = new Blob([trackContent]);
 			let newLink = $('<a>', {
 				text: filename,
@@ -182,8 +182,8 @@ function exportToTrack(singleFile) {
 				const wp1 = g_timestampToWayPoints[tsFrom];
 				const wp2 = g_timestampToWayPoints[tsTo];
 				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
-				if(wayPoints.length > 0)
-					trackHint += '，里程' + UTILS.meterToString(TRACK.distance(wayPoints));
+				if(trackDistance > 0)
+					trackHint += '，里程' + UTILS.meterToString(trackDistance);
 			}
 			exportedTrackList.append(trackHint + '<br/>');
 		}
@@ -207,20 +207,19 @@ function exportToTrack(singleFile) {
 			let tsTo = Number.MIN_SAFE_INTEGER;
 			const simpleTimestampToString = (a, b) => DF.timestampToString(a, HtmlTableFormat, false) + '~' + DF.timestampToString(b, HtmlTableFormat, false);
 			const ZeroPadLength = UTILS.intWidth(timestampsGrouped.length);
-			let allWaypoints = [];
+			let tracks = [];
 			timestampsGrouped.forEach((timestamps, idx) => {
-				let wayPoints = [];
-				timestamps.forEach(ts => {
-					wayPoints.push(g_timestampToWayPoints[ts]);
-				});
+				const wayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+				let track = new TRACK.Track(wayPoints);
+				tracks.push(track);
+
 				const WayPointFrom = wayPoints[0];
 				const WayPointTo = wayPoints[wayPoints.length-1];
-				allWaypoints.push(wayPoints);
 
 				const readableIdx = UTILS.zeroPad(idx + 1, ZeroPadLength); // 2 -> '00000000002'
 				trackHint += '轨迹' + readableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + UTILS.secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
 				trackHint += '，直线' + UTILS.meterToString(WayPointFrom.distanceTo(WayPointTo));
-				trackHint += '，里程' + UTILS.meterToString(TRACK.distance(wayPoints)) + '<br>';
+				trackHint += '，里程' + UTILS.meterToString(track.distance) + '<br>';
 
 				if (tsFrom > WayPointFrom.timestamp)
 					tsFrom = WayPointFrom.timestamp;
@@ -230,22 +229,21 @@ function exportToTrack(singleFile) {
 
 			const Filename = fileNameTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
 			const FileDesciption = descriptionTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条';
-			const TrackContent = TRACK.toFile(allWaypoints, ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
-			appendTrackResult(TrackContent, Filename, timestamps.length, tsFrom, tsTo, []);
+			const TrackContent = TRACK.toFile(tracks, ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
+			appendTrackResult(TrackContent, Filename, timestamps.length, tsFrom, tsTo, 0);
 			exportedTrackList.append(trackHint);
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
 			timestampsGrouped.forEach((timestamps) => {
-				let wayPoints = [];
-				timestamps.forEach(ts => {
-					wayPoints.push(g_timestampToWayPoints[ts]);
-				});
+				const wayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+				let track = new TRACK.Track(wayPoints);
+
 				const TsFrom = wayPoints[0].timestamp;
 				const TsTo = wayPoints[wayPoints.length-1].timestamp;
 				const Filename = fileNameTsFromTo(TsFrom, TsTo) + '.' + ExportFormat;
 				const FileDesciption = descriptionTsFromTo(TsFrom, TsTo);
-				const TrackContent = TRACK.toFile([wayPoints], ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
-				appendTrackResult(TrackContent, Filename, wayPoints.length, TsFrom, TsTo, wayPoints);
+				const TrackContent = TRACK.toFile([track], ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
+				appendTrackResult(TrackContent, Filename, wayPoints.length, TsFrom, TsTo, track.distance);
 			});
 		}
 	} else {
