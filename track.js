@@ -8,6 +8,7 @@ export {
 import * as KML from './kml.js';
 import * as GPX from './gpx.js';
 import * as DF from './date-format.js';
+import * as UTILS from './utils.js';
 
 /**
  * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
@@ -32,6 +33,14 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
     const localTs = (ts) => DF.timestampToString(ts, timestampFormat, false); // 本地时间
     const LatLonDecimalPrecision = 7; // 经纬度的小数位数
 
+    const ZeroPadLength = UTILS.intWidth(tracks.length);
+    const updateTrackIndexText = () => {
+        if(tracks.length > 1){
+            trackIndex++;
+            trackIndexSuffix = ' ' + UTILS.zeroPad(trackIndex, ZeroPadLength) + ': ';
+        }
+    };
+
     if('kml' == format){
         let body = '';
 
@@ -44,13 +53,11 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
             const WayPointTo = wayPoints[WayPointCount-1];
             const FolderDesciption = localTs(WayPointFrom.timestamp) + ' to ' + localTs(WayPointTo.timestamp);
 
-            // 文件夹开始
-            if(tracks.length>1){
-                trackIndex++;
-                trackIndexSuffix = ' ' + trackIndex + ': ';
+            updateTrackIndexText();
 
+            // 文件夹开始
+            if(tracks.length>1)
                 body += KML.folderHead('Folder' + trackIndexSuffix + FolderDesciption);
-            }
 
             // 起点
             body += KML.placemarkHead('Start'+ trackIndexSuffix + localTs(WayPointFrom.timestamp), undefined, undefined, WayPointFrom.timestamp);
@@ -108,11 +115,7 @@ function toFile(tracks, format, description, enableTrack, enableLine, timestampF
             const WayPointTo = wayPoints[WayPointCount - 1];
             const FolderDesciption = localTs(WayPointFrom.timestamp) + ' to ' + localTs(WayPointTo.timestamp);
 
-            // 文件夹开始
-            if(tracks.length>1){
-                trackIndex++;
-                trackIndexSuffix = ' ' + trackIndex + ': ';
-            }
+            updateTrackIndexText();
 
             // 起点
             body += GPX.wpt(WayPointFrom.lat, WayPointFrom.lon, WayPointFrom.altitude, LatLonDecimalPrecision, 'Start' + trackIndexSuffix + localTs(WayPointFrom.timestamp));

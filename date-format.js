@@ -1,6 +1,9 @@
 "use strict"
 
-export { timestampToString };
+export {
+	timestampToString,
+	now
+};
 
 // 自行实现了Date的format()函数
 // https://blog.scottchayaa.com/post/2019/05/27/javascript_date_memo
@@ -45,4 +48,8 @@ const g_dateObj = new Date();
 function timestampToString(ts, fmt, utc) {
 	g_dateObj.setTime(ts * 1000);
 	return g_dateObj.format(fmt, utc);
+}
+
+function now() {
+	return (new Date()).getTime();
 }

@@ -4,6 +4,7 @@ import * as DDPAI from './ddpai.js';
 import * as RD from './RequestDecorator.js';
 import * as TRACK from './track.js';
 import * as DF from './date-format.js';
+import * as UTILS from './utils.js';
 
 // export to global window scope
 window.exportToTrack = exportToTrack;
@@ -36,30 +37,6 @@ const HtmlTableFormat = 'MM-dd hh:mm'; // HTML网页中的日期格式
 
 function isMobileUserAgent() {
 	return /Android|webOS|iPhone|iPad|Mac|Macintosh|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-function secondToHumanReadableString(second) {
-	if (second < 60)
-		return second + 's';
-	if (second < 3600)
-		return Math.trunc(second / 60) + 'm';
-	if (second < 86400)
-		return (second / 3600).toFixed(1) + 'h';
-	return (second / 86400).toFixed(1) + 'd';
-}
-
-function byteToHumanReadableSize(bytes) {
-	let sizes = ['B', 'K', 'M', 'G', 'T'];
-	if (bytes == 0) return '0B';
-	let i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-	return (bytes / Math.pow(1024, i)).toFixed(1) + sizes[i];
-}
-
-function isObjectEmpty(obj){
-	// https://stackoverflow.com/questions/679915/how-do-i-test-for-an-empty-javascript-object
-	for(let i in obj)
-		return false;
-	return true;
 }
 
 $('#fetch-gps-file-list').click(function () {
@@ -117,7 +94,7 @@ $('#fetch-gps-file-list').click(function () {
 						innerHtml += '<td rowspan="' + idxCount + '" style="vertical-align:top;">' + selectDateRows + '</td>';
 					}
 
-					duration = secondToHumanReadableString(to - from);
+					duration = UTILS.secondToHumanReadableString(to - from);
 					from = DF.timestampToString(from, HtmlTableFormat, false);
 					to = DF.timestampToString(to, HtmlTableFormat, false);
 
@@ -155,16 +132,12 @@ $('#fetch-gps-file-list').click(function () {
 	});
 });
 
-function now() {
-	return (new Date()).getTime();
-}
-
 function isFilenameGpxGit(filename) {
 	return filename.search(/\d{14}_\d{4}(_D|_T)?\.g(px|it)/i) >= 0;
 }
 
 function exportToTrack(singleFile) {
-	const costTimestampBegin = now();
+	const costTimestampBegin = DF.now();
 	const timestamps = Object.keys(g_timestampToWayPoints).sort(); // 按时间排序
 
 	const exportedTrackList = $('#exportedTrackList');
@@ -202,15 +175,15 @@ function exportToTrack(singleFile) {
 			});
 
 			exportedTrackList.append(newLink);
-			let trackHint = '<br/>' + byteToHumanReadableSize(blob.size) + '，' + pointCount + '点';
+			let trackHint = '<br/>' + UTILS.byteToHumanReadableSize(blob.size) + '，' + pointCount + '点';
 			const duration = tsTo - tsFrom;
 			if (duration > 0) {
-				trackHint += '，耗时' + secondToHumanReadableString(duration);
+				trackHint += '，耗时' + UTILS.secondToHumanReadableString(duration);
 				const wp1 = g_timestampToWayPoints[tsFrom];
 				const wp2 = g_timestampToWayPoints[tsTo];
-				trackHint += '，直线' + meterToString(wp1.distanceTo(wp2));
+				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
 				if(wayPoints.length > 0)
-					trackHint += '，里程' + meterToString(TRACK.distance(wayPoints));
+					trackHint += '，里程' + UTILS.meterToString(TRACK.distance(wayPoints));
 			}
 			exportedTrackList.append(trackHint + '<br/>');
 		}
@@ -233,6 +206,7 @@ function exportToTrack(singleFile) {
 			let tsFrom = Number.MAX_SAFE_INTEGER;
 			let tsTo = Number.MIN_SAFE_INTEGER;
 			const simpleTimestampToString = (a, b) => DF.timestampToString(a, HtmlTableFormat, false) + '~' + DF.timestampToString(b, HtmlTableFormat, false);
+			const ZeroPadLength = UTILS.intWidth(timestampsGrouped.length);
 			let allWaypoints = [];
 			timestampsGrouped.forEach((timestamps, idx) => {
 				let wayPoints = [];
@@ -243,10 +217,10 @@ function exportToTrack(singleFile) {
 				const WayPointTo = wayPoints[wayPoints.length-1];
 				allWaypoints.push(wayPoints);
 
-				const readableIdx = idx + 1;
-				trackHint += '轨迹' + readableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
-				trackHint += '，直线' + meterToString(WayPointFrom.distanceTo(WayPointTo));
-				trackHint += '，里程' + meterToString(TRACK.distance(wayPoints)) + '<br>';
+				const readableIdx = UTILS.zeroPad(idx + 1, ZeroPadLength); // 2 -> '00000000002'
+				trackHint += '轨迹' + readableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + UTILS.secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
+				trackHint += '，直线' + UTILS.meterToString(WayPointFrom.distanceTo(WayPointTo));
+				trackHint += '，里程' + UTILS.meterToString(TRACK.distance(wayPoints)) + '<br>';
 
 				if (tsFrom > WayPointFrom.timestamp)
 					tsFrom = WayPointFrom.timestamp;
@@ -282,7 +256,7 @@ function exportToTrack(singleFile) {
 		exportedTrackList.append('<br/>');
 	}
 
-	infoList.append('导出轨迹完成，耗时 ' + (now() - costTimestampBegin) + 'ms');
+	infoList.append('导出轨迹完成，耗时 ' + (DF.now() - costTimestampBegin) + 'ms');
 }
 
 // ---- promise 1 ----
@@ -302,7 +276,7 @@ function promiseReadBlob(blob, isText) {
 function promiseReadGpx(filename, blob) {
 	return promiseReadBlob(blob, true).then((textData) => {
 		const p = DDPAI.preprocessRawGpxFile(textData, 160, '\n');
-		if(!isObjectEmpty(p))
+		if(!UTILS.isObjectEmpty(p))
 			g_gpxPreprocessContents[p['startTime']] = p['content'];
 		refreshDownloadProgress();
 		return Promise.resolve();
@@ -414,7 +388,7 @@ function mergePreprocessed(){
 
 // 参数idxes为整数的数组
 function downloadGpsPaths(idxes) {
-	let costTimestampBegin = now();
+	let costTimestampBegin = DF.now();
 	beforeDownloadGpsPaths();
 
 	const requestInstance = new RD.RequestDecorator({
@@ -442,7 +416,7 @@ function downloadGpsPaths(idxes) {
 
 		mergePreprocessed();
 		setProgress(-2);
-		refreshDownloadProgress(now() - costTimestampBegin);
+		refreshDownloadProgress(DF.now() - costTimestampBegin);
 	});
 }
 
@@ -472,7 +446,7 @@ $('.set-gpx-src').click(function () {
 		downloadGpsPaths(idxes);
 
 	} else {
-		let costTimestampBegin = now();
+		let costTimestampBegin = DF.now();
 		$('#entryList').empty();
 		let files = $("#fetch-gps-file-upload")[0].files;
 		let fileCount = files.length;
@@ -501,7 +475,7 @@ $('.set-gpx-src').click(function () {
 
 			mergePreprocessed();
 			setProgress(-2);
-			refreshDownloadProgress(now() - costTimestampBegin);
+			refreshDownloadProgress(DF.now() - costTimestampBegin);
 		});
 	}
 });
@@ -581,35 +555,12 @@ $('#fetch-gps-file-upload').on('change', function () {
 	});
 });
 
-/**
- * 转成指数刻度
- *
- * @param {number} inputVal 输入值
- * @param {number} inputMinVal 输入值最小值，若输入值等于此值，会返回0
- * @param {number} inputMaxVal 输入值最大值，若输入值等于此值，会返回1
- * @param {number} base 指数的基，如Math.E
- * @param {number} baseMinX 图像最左侧的X，必须为正数。指数函数中取[-baseMiX, 0]这一段图像作为刻度
- * @returns {array} 返回值的范围[0,1]
- */
-function scaleToIndex(inputVal, inputMinVal, inputMaxVal, base, baseMinX) {
-	if (inputVal <= inputMinVal)
-		return 0;
-	if (inputVal >= inputMaxVal)
-		return 1;
-
-	inputVal -= inputMinVal; // 移到0
-	inputVal /= (inputMaxVal - inputMinVal); // [0,1]
-	inputVal -= 1; // [-1,0]
-	inputVal *= baseMinX; // [baseMinX,0]
-	return Math.pow(base, inputVal);
-}
-
 function splitPathThresholdSecond() {
 	let inputBox = $('#split-path-threshold');
 	let val = parseInt(inputBox.val());
 	let minValue = parseInt(inputBox.prop('min'));
 	let maxValue = parseInt(inputBox.prop('max'));
-	let ratio = scaleToIndex(val, minValue, maxValue, Math.E, 5); // [0,1]
+	let ratio = UTILS.scaleToIndex(val, minValue, maxValue, Math.E, 5); // [0,1]
 	return Math.abs(Math.trunc(ratio * 86400));
 }
 
@@ -619,7 +570,7 @@ function updateSplitPathThresholdText() {
 	if (second < 1) {
 		label.html('不分割');
 	} else {
-		label.html(secondToHumanReadableString(second));
+		label.html(UTILS.secondToHumanReadableString(second));
 	}
 }
 
@@ -654,13 +605,6 @@ function setProgress(value) {
 	} else {
 		div.hide();
 	}
-}
-
-// 将数字（单位：米）转成字符串
-function meterToString(meter) {
-	if (meter > 1000)
-		return (meter / 1000).toFixed(1) + 'km';
-	return Math.trunc(meter) + 'm';
 }
 
 loadArchiveFormats(['tar'], function () {
