@@ -1,7 +1,7 @@
 "use strict"
 
 import * as KML from '../kml.js';
-import * as UTILS from './utils.js';
+import * as TEST_COMMON from './test-common.js';
 
 const decimal = 6;
 
@@ -29,7 +29,7 @@ let singleTrack = KML.head('SingleTrack')
 	+ KML.tail();
 
 // Write
-UTILS.writeFile('/tmp/0000000-SingleTrack.kml', singleTrack);
+TEST_COMMON.writeFile('/tmp/0000000-SingleTrack.kml', singleTrack);
 
 let multiTrack = KML.head('MultiTrack')
 	+ KML.placemarkHead('MyTrack', 'Desciption', KML.StyleId.Track)
@@ -52,4 +52,4 @@ let multiTrack = KML.head('MultiTrack')
 	+ KML.tail();
 
 // Write
-UTILS.writeFile('/tmp/0000000-MultiTrack.kml', multiTrack);
+TEST_COMMON.writeFile('/tmp/0000000-MultiTrack.kml', multiTrack);

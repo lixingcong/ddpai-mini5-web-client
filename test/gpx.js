@@ -1,7 +1,7 @@
 "use strict"
 
 import * as GPX from '../gpx.js';
-import * as UTILS from './utils.js';
+import * as TEST_COMMON from './test-common.js';
 
 let body = '';
 
@@ -35,4 +35,4 @@ body += GPX.rteTail();
 // final result
 const gpxFileContent = GPX.head('Hello') + body + GPX.tail();
 
-UTILS.writeFile('/tmp/0000000.gpx', gpxFileContent);
+TEST_COMMON.writeFile('/tmp/0000000.gpx', gpxFileContent);
