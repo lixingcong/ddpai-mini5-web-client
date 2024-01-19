@@ -1,186 +1,195 @@
 "use strict"
 
 export {
-    Track,
-	toFile,
-    distance
+    Point,
+    Path,
+    TrackFile
 };
 
 import * as KML from './kml.js';
 import * as GPX from './gpx.js';
-import * as DF from './date-format.js';
-import * as UTILS from './utils.js';
+import * as WP from './waypoint.js';
 
-class Track
+class Point
 {
-    constructor(wayPoints)
+    constructor(name, wayPoint)
     {
-        this.wayPoints = wayPoints; // 按时间先后顺序的点位数组（WayPoint类型
-        this.distance = distance(wayPoints); // 轨迹长度(米)
+        this.name = name;
+        this.wayPoint = wayPoint;
     }
 }
 
-/**
- * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
- *
- * @param {tracks} 轨迹数组：数组长度表示轨迹数，每个元素为Track对象
- * @param {format} 文件格式，有效值：'kml'
- * @param {description} 文件描述（注释）
- * @param {enableTrack} 布尔值，是否导出轨迹（含完整时间信息）
- * @param {enableLine} 布尔值，是否导出路径（不含时间，仅做线条绘制）
- * @param {timestampFormat} 将时间戳转为人类阅读的fmt，例如 'yyyy-MM-dd hh:mm'，依赖date-format.js
- * 
- * @return {string} 完整的文件内容
- */
-function toFile(tracks, format, description, enableTrack, enableLine, timestampFormat)
+class Path
 {
-    if(0 >= tracks.length)
-        return undefined;
-
-    let trackIndex = 0;
-    let trackIndexSuffix = ': ';
-
-    const localTs = (ts) => DF.timestampToString(ts, timestampFormat, false); // 本地时间
-    const LatLonDecimalPrecision = 7; // 经纬度的小数位数
-
-    const ZeroPadLength = UTILS.intWidth(tracks.length);
-    const updateTrackIndexText = () => {
-        if(tracks.length > 1){
-            trackIndex++;
-            trackIndexSuffix = ' ' + UTILS.zeroPad(trackIndex, ZeroPadLength) + ': ';
-        }
-    };
-
-    if('kml' == format){
-        let body = '';
-
-        tracks.forEach(track => {
-            const distanceStr = ', ' + UTILS.meterToString(track.distance);
-            const wayPoints = track.wayPoints;
-
-            const WayPointCount = wayPoints.length;
-            if(WayPointCount <= 0)
-                return; // ignore the empty wayPoints
-
-            const WayPointFrom = wayPoints[0];
-            const WayPointTo = wayPoints[WayPointCount-1];
-            const FolderDesciption = localTs(WayPointFrom.timestamp) + ' to ' + localTs(WayPointTo.timestamp);
-
-            updateTrackIndexText();
-
-            // 文件夹开始
-            if(tracks.length>1)
-                body += KML.folderHead('Folder' + trackIndexSuffix + FolderDesciption);
-
-            // 起点
-            body += KML.placemarkHead('Start'+ trackIndexSuffix + localTs(WayPointFrom.timestamp), undefined, undefined, WayPointFrom.timestamp);
-            body += KML.placemarkPoint(WayPointFrom.lat, WayPointFrom.lon, LatLonDecimalPrecision);
-            body += KML.placemarkTail();
-
-            // 终点
-            if(WayPointCount>0){
-                body += KML.placemarkHead('End'+ trackIndexSuffix + localTs(WayPointTo.timestamp), undefined, undefined, WayPointTo.timestamp);
-                body += KML.placemarkPoint(WayPointTo.lat, WayPointTo.lon, LatLonDecimalPrecision);
-                body += KML.placemarkTail();
-            }
-
-            // 连线
-            if(enableLine){
-                body += KML.placemarkHead('Line' + trackIndexSuffix + FolderDesciption + distanceStr, undefined, KML.StyleId.Line, undefined);
-                body += KML.lineStringHead();
-
-                wayPoints.forEach(wayPoint => {
-                    body += KML.lineStringCoord(wayPoint.lat, wayPoint.lon, LatLonDecimalPrecision);
-                });
-
-                body += KML.lineStringTail();
-                body += KML.placemarkTail();
-            }
-
-            // 轨迹
-            if(enableTrack){
-                body += KML.placemarkHead('Track' + trackIndexSuffix + FolderDesciption + distanceStr, undefined, KML.StyleId.Track, undefined);
-                body += KML.trackHead();
-                body += KML.altitudeMode(KML.AltitudeMode.Absolute);
-                wayPoints.forEach(wayPoint => {
-                    body += KML.trackCoord(wayPoint.lat, wayPoint.lon, wayPoint.altitude, LatLonDecimalPrecision, wayPoint.timestamp);
-                });
-                body += KML.trackTail();
-                body += KML.placemarkTail();
-            }
-
-            // 文件夹结束
-            if(tracks.length>1){
-                body += KML.folderTail();
-            }
-        });
-
-        return KML.head(description) + body + KML.tail();
-    } else if ('gpx' == format) {
-        let body = '';
-
-        tracks.forEach(track => {
-            const distanceStr = ', ' + UTILS.meterToString(track.distance);
-            const wayPoints = track.wayPoints;
-
-            const WayPointCount = wayPoints.length;
-            if (WayPointCount <= 0)
-                return; // ignore the empty wayPoints
-
-            const WayPointFrom = wayPoints[0];
-            const WayPointTo = wayPoints[WayPointCount - 1];
-            const FolderDesciption = localTs(WayPointFrom.timestamp) + ' to ' + localTs(WayPointTo.timestamp);
-
-            updateTrackIndexText();
-
-            // 起点
-            body += GPX.wpt(WayPointFrom.lat, WayPointFrom.lon, WayPointFrom.altitude, LatLonDecimalPrecision, 'Start' + trackIndexSuffix + localTs(WayPointFrom.timestamp));
-
-            // 终点
-            if (WayPointCount > 0) {
-                body += GPX.wpt(WayPointTo.lat, WayPointTo.lon, WayPointTo.altitude, LatLonDecimalPrecision, 'End' + trackIndexSuffix + localTs(WayPointTo.timestamp));
-            }
-
-            // 连线
-            if (enableLine) {
-                body += GPX.rteHead('Route' + trackIndexSuffix + FolderDesciption + distanceStr);
-                wayPoints.forEach(wayPoint => {
-                    body += GPX.rtept(wayPoint.lat, wayPoint.lon, LatLonDecimalPrecision);
-                });
-                body += GPX.rteTail();
-            }
-
-            // 轨迹
-            if (enableTrack) {
-                body += GPX.trkHead('Track' + trackIndexSuffix + FolderDesciption + distanceStr);
-                wayPoints.forEach(wayPoint => {
-                    body += GPX.trkpt(wayPoint.lat, wayPoint.lon, wayPoint.altitude, LatLonDecimalPrecision, wayPoint.timestamp);
-                });
-                body += GPX.trkTail();
-            }
-        });
-
-        return GPX.head(description) + body + GPX.tail();
+    constructor(name, wayPoints)
+    {
+        this.name = name;
+        this.wayPoints = wayPoints;
     }
-
-    return undefined;
 }
 
-// wayPoints 轨迹数组：按时间先后顺序的点位数组（WayPoint类型）
-// speedThreshold 速度阈值，若某点瞬间速度大于该值（单位：km/h），则累积该位移
-// distanceThreshold 距离阈值，若与上一点的距离大于该值（单位：米），则累积该位移
-function distance(wayPoints, speedThreshold = 1.5, distanceThreshold = 50){
-	let distance = 0.0;
-	let lastWayPoint = undefined;
+class TrackFile
+{
+    constructor(name)
+    {
+        this.name = name; // 文档名字
+        this.points = []; // Point对象数组
+        this.lines = []; // Path对象数组，没有时间戳
+        this.tracks = []; // Path对象数组
+    }
 
-	wayPoints.forEach(wayPoint => {
-		const speed = wayPoint.hasSpeed() ? wayPoint.speed : 0.0;
-        const thisDistance = wayPoint.distanceTo(lastWayPoint);
+    toKMLDocument()
+    {
+        let document = new KML.Document(this.name);
 
-		if (speed > speedThreshold || thisDistance > distanceThreshold) {
-			distance += thisDistance;
-            lastWayPoint = wayPoint;
-		}
-	});
-    return distance;
+        const BlueStyle = new KML.Style('BlueStyle','A0FF0000',5);
+        const GreenStyle = new KML.Style('GreenStyle','D032FF30',5);
+        document.styles=[BlueStyle, GreenStyle];
+
+        // 点位
+        if(1==this.points.length){
+            const point = this.points[0];
+            let placeMark = new KML.PlaceMark(point.name);
+            placeMark.point = new KML.Coordinates([
+                new KML.Coordinate(point.wayPoint.lat, point.wayPoint.lon)
+            ]);
+            document.placeMarks.push(placeMark);
+        }else if(1<this.points.length){
+            let folder= new KML.Folder('Points');
+            folder.placeMarks = this.points.map(point => {
+                let placeMark = new KML.PlaceMark(point.name);
+                placeMark.point = new KML.Coordinates([
+                    new KML.Coordinate(point.wayPoint.lat, point.wayPoint.lon)
+                ]);
+                return placeMark;
+            });
+            document.folders.push(folder);
+        }
+
+        // 线条
+        if(1==this.lines.length){
+            const path = this.lines[0];
+            let placeMark = new KML.PlaceMark(path.name);
+            placeMark.lineString = new KML.LineString(
+                path.wayPoints.map(wp => new KML.Coordinate(wp.lat, wp.lon))
+            );
+            placeMark.styleId=GreenStyle.id;
+            document.placeMarks.push(placeMark);
+        }else if(1<this.lines.length){
+            let folder= new KML.Folder('Routes');
+            folder.placeMarks = this.lines.map(path => {
+                let placeMark = new KML.PlaceMark(path.name);
+                placeMark.lineString = new KML.LineString(
+                    path.wayPoints.map(wp => new KML.Coordinate(wp.lat, wp.lon))
+                );
+                placeMark.styleId=GreenStyle.id;
+                return placeMark;
+            });
+            document.folders.push(folder);
+        }
+
+        // 轨迹
+        if(1==this.tracks.length){
+            const path = this.tracks[0];
+            let placeMark = new KML.PlaceMark(path.name);
+            placeMark.gxTrack = new KML.GxTrack(KML.AltitudeMode.Absolute);
+            path.wayPoints.forEach(wp => {
+                placeMark.gxTrack.append(new KML.When(wp.timestamp), new KML.GxCoord(wp.lat, wp.lon, wp.altitude));
+            });
+            placeMark.styleId=BlueStyle.id;
+            document.placeMarks.push(placeMark);
+        }else if(1<this.tracks.length){
+            let folder= new KML.Folder('Tracks');
+            folder.placeMarks = this.tracks.map(path => {
+                let placeMark = new KML.PlaceMark(path.name);
+                placeMark.gxTrack = new KML.GxTrack(KML.AltitudeMode.Absolute);
+                path.wayPoints.forEach(wp => {
+                    placeMark.gxTrack.append(new KML.When(wp.timestamp), new KML.GxCoord(wp.lat, wp.lon, wp.altitude));
+                });
+                placeMark.styleId=BlueStyle.id;
+                return placeMark;
+            });
+            document.folders.push(folder);
+        }
+
+        return document;
+    }
+
+    static fromKMLDocument(document)
+    {
+        let ret = new TrackFile(document.name);
+
+        const gxTrackToWayPoints = (gxTrack) => {
+            const timestamps = gxTrack.whenArray.map(w => w.timestamp);
+            let wayPoints = gxTrack.gxCoordArray.map(g => new WP.WayPoint(g.lat, g.lon, undefined, g.altitude));
+            const len = Math.min(timestamps.length, wayPoints.length);
+            for(let i=0;i<len;++i)
+                wayPoints[i].timestamp=timestamps[i];
+            return wayPoints;
+        }
+
+        const parsePlaceMarks = (placeMarks) => {
+            placeMarks.forEach(placeMark => {
+                if(undefined != placeMark.point){
+                    const coord = placeMark.point.coordinates[0];
+                    ret.points.push(new Point(placeMark.name, new WP.WayPoint(coord.lat, coord.lon, undefined, coord.altitude)))
+                }
+                if(undefined != placeMark.gxTrack){
+                    ret.tracks.push(new Path(placeMark.name, gxTrackToWayPoints(placeMark.gxTrack)));
+                }
+                if(undefined != placeMark.gxMultiTrack){
+                    // TODO: KML中MultiTrack是否要对应GPX的中的trkseg字段
+                    let wayPoints = [];
+                    placeMark.gxMultiTrack.gxTracks.forEach(gxTrack => {
+                        wayPoints = wayPoints.concat(gxTrackToWayPoints(gxTrack))
+                    });
+                    ret.tracks.push(new Path(placeMark.name, wayPoints));
+                }
+                if(undefined != placeMark.lineString){
+                    ret.lines.push(new Path(placeMark.name,
+                        placeMark.lineString.coordinates.map(c => new WP.WayPoint(c.lat, c.lon, undefined, c.altitude))));
+                }
+            });
+        }
+
+        parsePlaceMarks(document.placeMarks);
+
+        if(undefined!=document.folders){
+            document.folders.forEach(folder => {
+                parsePlaceMarks(folder.placeMarks);
+            });
+        }
+
+        return ret;
+    }
+
+    toGPXDocument()
+    {
+        let document = new GPX.Document(this.name);
+
+        document.wpts=this.points.map(point => new GPX.Wpt(point.name, point.wayPoint.lat, point.wayPoint.lon, point.wayPoint.altitude, point.timestamp));
+        document.rtes=this.lines.map(path => new GPX.Rte(path.name, path.wayPoints.map(wp => new GPX.Rtept(wp.lat, wp.lon))));
+        document.trks=this.tracks.map(path => new GPX.Trk(path.name, [
+            new GPX.Trkseg(path.wayPoints.map(wp => new GPX.Trkpt(wp.lat, wp.lon, wp.timestamp, wp.altitude)))
+        ]));
+        return document;
+    }
+
+    static fromGPXDocument(document)
+    {
+        let ret = new TrackFile(document.name);
+
+        ret.points=document.wpts.map(wpt => new Point(wpt.name, new WP.WayPoint(wpt.lat, wpt.lon, wpt.timestamp, wpt.altitude)));
+        ret.lines=document.rtes.map(rte => new Path(rte.name, rte.rtepts.map(rtept => new WP.WayPoint(rtept.lat, rtept.lon))));
+        ret.tracks=document.trks.map(trk => {
+            let wayPoints = [];
+            trk.trksegs.forEach(trkseg => {
+                trkseg.trkpts.forEach(trkpt => {
+                    wayPoints.push(new WP.WayPoint(trkpt.lat, trkpt.lon, trkpt.timestamp, trkpt.altitude));
+                });
+            });
+            return new Path(trk.name, wayPoints);
+        });
+        return ret;
+    }
 }

@@ -3,36 +3,69 @@
 import * as GPX from '../gpx.js';
 import * as TEST_COMMON from './test-common.js';
 
-let body = '';
+let document = new GPX.Document('DocName');
 
-// wp
-body += GPX.wpt(3.6830779744, 110.2729520458, 12, 7, 'Point');
+if(1){
+    document.wpts.push(new GPX.Wpt('Point 1',22.8820573, 114.5768273, undefined, 123));
+    document.wpts.push(new GPX.Wpt('Point 2',22.8821573, 114.5769273, 567, undefined));
+}
 
-// trk
-body += GPX.trkHead('Track 01');
-body += GPX.trkpt(3.6830779744, 110.2729520458, 12, 7, '2001-06-02T03:26:55Z');
-body += GPX.trkpt(3.6930779744, 110.2739520458, 12, 7, '2001-06-02T03:26:56Z');
-body += GPX.trkpt(3.7030779744, 110.2749520458, 12, 7, '2001-06-02T03:26:57Z');
-body += GPX.trkpt(3.7130779744, 110.2759520458, 12, 7, '2001-06-02T03:26:58Z');
-body += GPX.trkpt(3.7230779744, 110.2769520458, 12, 7, '2001-06-02T03:26:59Z');
-body += GPX.trkpt(3.7330779744, 110.2779520458, 12, 7, '2001-06-02T03:27:00Z');
-body += GPX.trkpt(3.7430779744, 110.2789520458, 12, 7, '2001-06-02T03:27:01Z');
-body += GPX.trkpt(3.7530779744, 110.2799520458, 12, 7, '2001-06-02T03:27:02Z');
-body += GPX.trkTail();
+if(1){
+    document.rtes.push(new GPX.Rte('Route 1', [
+        new GPX.Rtept(22.8820573, 114.5768273),
+        new GPX.Rtept(22.8821573, 114.5769273),
+        new GPX.Rtept(22.8822573, 114.5770273),
+        new GPX.Rtept(22.8823573, 114.5771273)
+    ]));
 
-// rte
-body += GPX.rteHead('Line 01');
-body += GPX.rtept(3.6830779744, 110.2729520458, 12);
-body += GPX.rtept(3.6930779744, 110.2739520458, 12);
-body += GPX.rtept(3.7030779744, 110.2749520458, 12);
-body += GPX.rtept(3.7130779744, 110.2759520458, 12);
-body += GPX.rtept(3.7230779744, 110.2769520458, 12);
-body += GPX.rtept(3.7330779744, 110.2779520458, 12);
-body += GPX.rtept(3.7430779744, 110.2789520458, 12);
-body += GPX.rtept(3.7530779744, 110.2799520458, 12);
-body += GPX.rteTail();
+    document.rtes.push(new GPX.Rte('Route 2', [
+        new GPX.Rtept(23.8825573, 114.5771273),
+        new GPX.Rtept(22.8826573, 114.5772273),
+        new GPX.Rtept(22.8827573, 114.5773273),
+        new GPX.Rtept(22.8828573, 114.5774273)
+    ]));
+}
 
-// final result
-const gpxFileContent = GPX.head('Hello') + body + GPX.tail();
+if(1){
+    {
+        const trk=new GPX.Trk('Track 1', [
+            new GPX.Trkseg([
+                new GPX.Trkpt(22.785665, 114.1690076, 1244, 10),
+                new GPX.Trkpt(22.785675, 114.1690086, 1245, 11),
+                new GPX.Trkpt(22.785685, 114.1690096, 1246, 12),
+                new GPX.Trkpt(22.785695, 114.1690106, 1247, undefined)
+            ]),
+            new GPX.Trkseg([
+                new GPX.Trkpt(22.785696, 114.1690076, 1250, 13),
+                new GPX.Trkpt(22.785697, 114.1690085, 1251, undefined),
+                new GPX.Trkpt(22.785698, 114.1690094, 1252, undefined),
+                new GPX.Trkpt(22.785699, 114.1690103, 1253, 11)
+            ])
+        ]);
+        document.trks.push(trk);
+    }
 
-TEST_COMMON.writeFile('/tmp/0000000.gpx', gpxFileContent);
+    {
+        const trk=new GPX.Trk('Track 2', [
+            new GPX.Trkseg([
+                new GPX.Trkpt(22.785705, 114.1691076, 1234),
+                new GPX.Trkpt(22.785715, 114.1691086, 1235),
+                new GPX.Trkpt(22.785725, 114.1691096, 1236),
+                new GPX.Trkpt(22.785735, 114.1691106, 1237)
+            ])
+        ]);
+        document.trks.push(trk);
+    }
+}
+
+const content = document.toFile(true);
+const documentFromContent = GPX.Document.fromFile(content);
+// console.log(content);
+// console.log(documentFromContent);
+if(TEST_COMMON.isObjectEqual(document, documentFromContent)){
+    console.log('GPX.Document.fromFile(): same');
+}else{
+    console.warn('GPX.Document.toFile() !== GPX.Document.fromFile()');
+    TEST_COMMON.writeFile('/tmp/gpx2-diff.gpx', documentFromContent.toFile(true));
+}
+TEST_COMMON.writeFile('/tmp/gpx2.gpx', content);

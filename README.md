@@ -2,6 +2,13 @@
 
 将本项目部署到某虚拟主机上，可以是github.io静态展示页，访问index.html即可。
 
+用到的第三方库
+
+- [jQuery](https://jquery.com)
+- [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser)
+- [uncompress.js](https://github.com/workhorsy/uncompress.js)
+- [jszip.js](https://github.com/Stuk/jszip) tag: v2.5.0
+
 ## 导出方法
 
 GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打开本地gpx/git文件，提供给前端脚本处理。这两种方法都可以导出轨迹，只使用一种即可。
@@ -37,6 +44,7 @@ GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打�
 
 - 从记录仪获取原始数据后，可以在表格中单击时间一列，获得多个gpx/git文件的http下载直链
 - 设置盯盯拍停机时间超过一定时间阈值后，才分割成两条轨迹导出
+- 内置了GPX与KML文件格式相互转换，访问```convert.html```可批量转换多个轨迹文件
 
 ## 截图
 

@@ -1,3 +1,6 @@
 {
-	"type":"module"
+	"type": "module",
+	"dependencies": {
+		"fast-xml-parser": "^4.3.3"
+	}
 }

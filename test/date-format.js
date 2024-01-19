@@ -14,3 +14,9 @@ const printNow = (utc) => {
 
 printNow(false);
 printNow(true);
+
+const ts = 1705564686;
+if(DF.fromRfc3339(DF.toRfc3339(ts)) != ts){
+    console.warn('fromRfc3339 test failed!!!');
+    process.exit(-1);
+}

@@ -2,7 +2,9 @@
 
 export {
 	timestampToString,
-	now
+	now,
+	toRfc3339,
+	fromRfc3339
 };
 
 // 自行实现了Date的format()函数
@@ -51,5 +53,15 @@ function timestampToString(ts, fmt, utc) {
 }
 
 function now() {
-	return (new Date()).getTime();
+	return Date.now();
+}
+
+function toRfc3339(ts)
+{
+	return timestampToString(ts, 'yyyy-MM-ddThh:mm:ssZ', true);
+}
+
+function fromRfc3339(str)
+{
+	return parseInt(Date.parse(str) / 1000);
 }

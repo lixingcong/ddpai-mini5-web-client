@@ -227,7 +227,8 @@ function gpxToWayPointDict(gpxFileContents) {
     // 丢弃无效的内容
     const timestamps = Object.keys(ret);
     timestamps.forEach(timestamp => {
-        if(!ret[timestamp].isValid())
+        const wayPoint = ret[timestamp];
+        if(!wayPoint.hasTimestamp() || !wayPoint.hasGeometry())
             delete ret[timestamp];
     });
 

@@ -50,7 +50,15 @@
 			<summary>其它参数</summary>
 			<div class="btn-container">
 				<label><input type="checkbox" id="enable-export-track" checked="true"></input>导出轨迹</label>
-				<label><input type="checkbox" id="enable-export-line" checked="true"></input>导出线条</label>
+				<span class="help-tip"><p>轨迹：带有时间戳信息，可推算出速度</p></span>
+				<label><input type="checkbox" id="enable-export-route" checked="true"></input>导出路径</label>
+				<span class="help-tip"><p>路径：不含时间戳</p></span>
+			</div>
+			<div class="btn-container">
+				<label><input type="checkbox" id="enable-export-point" checked="true"></input>导出两点</label>
+				<span class="help-tip"><p>两点：轨迹起始点和结束点</p></span>
+				<label><input type="checkbox" id="enable-export-beautify"></input>美化缩进</label>
+				<span class="help-tip"><p>缩进：插入空白进行缩进对齐，牺牲文件尺寸，改善XML文件的可读性</p></span>
 			</div>
 			<div class="btn-container">
 				<span class="btn-spacer">
@@ -69,12 +77,14 @@
 			</div>
 
 			<div>
-				<span class="btn-spacer">链接</span>
 				<span class="btn-spacer">
-					<a target="_blank" href="https://github.com/lixingcong/ddpai-mini5-web-client">本站源码</a>
+					<a target="_blank" href="https://github.com/lixingcong/ddpai-mini5-web-client">源码</a>
 				</span>
 				<span class="btn-spacer">
-					<a target="_blank" href="https://mybrowseraddon.com/access-control-allow-origin.html">下载CORS扩展</a>
+					<a target="_blank" href="/convert.html">文件转换</a>
+				</span>
+				<span class="btn-spacer">
+					<a target="_blank" href="https://mybrowseraddon.com/access-control-allow-origin.html">CORS扩展</a>
 				</span>
 				<span class="btn-spacer">
 					<a target="_blank" href="https://earth.google.com/web">Google Earth</a>

@@ -5,6 +5,7 @@ import * as RD from './RequestDecorator.js';
 import * as TRACK from './track.js';
 import * as DF from './date-format.js';
 import * as UTILS from './utils.js';
+import * as WP from './waypoint.js';
 
 // export to global window scope
 window.exportToTrack = exportToTrack;
@@ -31,8 +32,7 @@ var errorCount = 0;
 var tableMulitselStatus = true;
 
 // params
-const TrackFileNameFormat = 'yyyyMMdd-hhmm'; // 文件名日期格式，不能含特殊字符，如冒号
-const WayPointDescriptionFormat = 'yyyy-MM-dd hh:mm'; // 描述一个点的注释日期格式
+const WayPointDescriptionFormat = 'yyyyMMdd hh:mm'; // 描述一个点的注释日期格式
 const HtmlTableFormat = 'MM-dd hh:mm'; // HTML网页中的日期格式
 
 function isMobileUserAgent() {
@@ -142,12 +142,18 @@ function exportToTrack(singleFile) {
 
 	const exportedTrackList = $('#exportedTrackList');
 	exportedTrackList.empty();
-	$('#infoList').empty();
+
+	const infoList=$('#infoList')
+	infoList.empty();
 	if (timestamps.length > 0) {
 		// 按时间差分阈值分割完毕的结果
 		let timestampsGrouped = UTILS.splitOrderedNumbersByThreshold(timestamps, splitPathThresholdSecond());
 
+		const zip = new JSZip();
+
 		function appendTrackResult(trackContent, filename, pointCount, tsFrom, tsTo, trackDistance) {
+			zip.file(filename, trackContent);
+
 			let blob = new Blob([trackContent]);
 			let newLink = $('<a>', {
 				text: filename,
@@ -170,37 +176,91 @@ function exportToTrack(singleFile) {
 		}
 
 		const fileNameTsFromTo = (a, b) => {
-			return DF.timestampToString(a, TrackFileNameFormat, false) + '到' + DF.timestampToString(b, TrackFileNameFormat, false);
+			const TrackFileNameFormat = 'yyyyMMdd-hhmm'; // 文件名日期格式，不能含特殊字符，如冒号
+			const from = DF.timestampToString(a, TrackFileNameFormat, false);
+			const to = DF.timestampToString(b, TrackFileNameFormat, false);
+			if(from.substring(0,8) == to.substring(0,8))
+				return from + '到' + to.substring(9);
+			return from + '到' + to;
 		}
 
 		const descriptionTsFromTo = (a, b) => {
-			return DF.timestampToString(a, WayPointDescriptionFormat, false) + '到' + DF.timestampToString(b, WayPointDescriptionFormat, false);
+			const from = DF.timestampToString(a, WayPointDescriptionFormat, false);
+			const to = DF.timestampToString(b, WayPointDescriptionFormat, false);
+			if(from.substring(0,8) == to.substring(0,8))
+				return from + '~' + to.substring(9);
+			return from + '~' + to;
+		}
+
+		const simpleTimestampToString = (a, b) => {
+			const from = DF.timestampToString(a, HtmlTableFormat, false);
+			const to = DF.timestampToString(b, HtmlTableFormat, false);
+			if(from.substring(0,5) == to.substring(0,5))
+				return from + '~' + to.substring(6);
+			return from + '~' + to;
 		}
 
 		const ExportFormat = $('select#select-export-format').find(":selected").val();
 		const EnableTrack = $('#enable-export-track').prop('checked');
-		const EnableLine = $('#enable-export-line').prop('checked');
+		const EnableRoute = $('#enable-export-route').prop('checked');
+		const EnablePoint = $('#enable-export-point').prop('checked');
+		const EnableBeautify = $('#enable-export-beautify').prop('checked');
+
+		const appendWayPointsToTrackFile = (trackFile, wayPoints, wayPointFrom, wayPointTo, distance, readableIdx) => {
+			const DistanceStr = ' ' + UTILS.meterToString(distance);
+
+			let pathSuffix = descriptionTsFromTo(wayPointFrom.timestamp, wayPointTo.timestamp) + DistanceStr;
+			let startSuffix = DF.timestampToString(wayPointFrom.timestamp, WayPointDescriptionFormat, false);
+			let endSuffix = DF.timestampToString(wayPointTo.timestamp, WayPointDescriptionFormat, false);
+
+			if(undefined!=readableIdx){
+				const Prefix = readableIdx + ': ';
+				pathSuffix = Prefix + pathSuffix;
+				startSuffix = Prefix + startSuffix;
+				endSuffix = Prefix + endSuffix;
+			}
+
+			if(EnablePoint){
+				trackFile.points.push(new TRACK.Point('Start ' + startSuffix, wayPointFrom));
+				trackFile.points.push(new TRACK.Point('End ' + endSuffix, wayPointTo));
+			}
+
+			if(EnableRoute)
+				trackFile.lines.push(new TRACK.Path('Route '+ pathSuffix, wayPoints));
+
+			if(EnableTrack)
+				trackFile.tracks.push(new TRACK.Path('Track '+pathSuffix, wayPoints));
+		}
+
+		const trackFileToContent = (trackFile, fmt) => {
+			if('kml' == fmt)
+				return trackFile.toKMLDocument().toFile(EnableBeautify);
+			if('gpx' == fmt)
+				return trackFile.toGPXDocument().toFile(EnableBeautify);
+			return undefined;
+		}
+
+		let tsFrom = Number.MAX_SAFE_INTEGER;
+		let tsTo = Number.MIN_SAFE_INTEGER;
 
 		if (singleFile) {
 			// singleFile = true表示单个文件，内含N条轨迹
 			let trackHint = '';
-			let tsFrom = Number.MAX_SAFE_INTEGER;
-			let tsTo = Number.MIN_SAFE_INTEGER;
-			const simpleTimestampToString = (a, b) => DF.timestampToString(a, HtmlTableFormat, false) + '~' + DF.timestampToString(b, HtmlTableFormat, false);
+
 			const ZeroPadLength = UTILS.intWidth(timestampsGrouped.length);
-			let tracks = [];
+			const trackFile = new TRACK.TrackFile;
 			timestampsGrouped.forEach((timestamps, idx) => {
-				const wayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
-				let track = new TRACK.Track(wayPoints);
-				tracks.push(track);
+				const WayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+				const WayDistance = WP.wayDistance(WayPoints);
+				const WayPointFrom = WayPoints[0];
+				const WayPointTo = WayPoints[WayPoints.length-1];
+				const ReadableIdx = UTILS.zeroPad(idx + 1, ZeroPadLength); // 2 -> '00000000002'
 
-				const WayPointFrom = wayPoints[0];
-				const WayPointTo = wayPoints[wayPoints.length-1];
-
-				const readableIdx = UTILS.zeroPad(idx + 1, ZeroPadLength); // 2 -> '00000000002'
-				trackHint += '轨迹' + readableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + UTILS.secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
+				trackHint += '轨迹' + ReadableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + UTILS.secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
 				trackHint += '，直线' + UTILS.meterToString(WayPointFrom.distanceTo(WayPointTo));
-				trackHint += '，里程' + UTILS.meterToString(track.distance) + '<br>';
+				trackHint += '，里程' + UTILS.meterToString(WayDistance) + '<br>';
+
+				appendWayPointsToTrackFile(trackFile, WayPoints, WayPointFrom, WayPointTo, WayDistance, ReadableIdx);
 
 				if (tsFrom > WayPointFrom.timestamp)
 					tsFrom = WayPointFrom.timestamp;
@@ -209,23 +269,54 @@ function exportToTrack(singleFile) {
 			});
 
 			const Filename = fileNameTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
-			const FileDesciption = descriptionTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条';
-			const TrackContent = TRACK.toFile(tracks, ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
+			trackFile.name = descriptionTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条';
+			const TrackContent = trackFileToContent(trackFile, ExportFormat);
 			appendTrackResult(TrackContent, Filename, timestamps.length, tsFrom, tsTo, 0);
 			exportedTrackList.append(trackHint);
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
 			timestampsGrouped.forEach((timestamps) => {
-				const wayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
-				let track = new TRACK.Track(wayPoints);
+				const WayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+				const WayDistance = WP.wayDistance(WayPoints);
+				const WayPointFrom = WayPoints[0];
+				const WayPointTo = WayPoints[WayPoints.length-1];
 
-				const TsFrom = wayPoints[0].timestamp;
-				const TsTo = wayPoints[wayPoints.length-1].timestamp;
+				if (tsFrom > WayPointFrom.timestamp)
+					tsFrom = WayPointFrom.timestamp;
+				if (tsTo < WayPointTo.timestamp)
+					tsTo = WayPointTo.timestamp;
+
+				let trackFile = new TRACK.TrackFile;
+				appendWayPointsToTrackFile(trackFile, WayPoints, WayPointFrom, WayPointTo, WayDistance, undefined)
+
+				const TsFrom = WayPointFrom.timestamp;
+				const TsTo = WayPointTo.timestamp;
 				const Filename = fileNameTsFromTo(TsFrom, TsTo) + '.' + ExportFormat;
 				const FileDesciption = descriptionTsFromTo(TsFrom, TsTo);
-				const TrackContent = TRACK.toFile([track], ExportFormat, FileDesciption, EnableTrack, EnableLine, WayPointDescriptionFormat);
-				appendTrackResult(TrackContent, Filename, wayPoints.length, TsFrom, TsTo, track.distance);
+				trackFile.name = FileDesciption;
+				const TrackContent = trackFileToContent(trackFile, ExportFormat);
+				appendTrackResult(TrackContent, Filename, WayPoints.length, TsFrom, TsTo, WayDistance);
 			});
+		}
+
+		{
+			// zip
+			const zipBlob = zip.generate({
+				compression: "DEFLATE",
+				compressionOptions : {level:6},
+				type: "blob",
+				platform: "DOS",
+				mimeType: 'application/zip'
+			});
+
+			let filename = '合辑_'+fileNameTsFromTo(tsFrom,tsTo)+'.zip';
+			let newLink = $('<a>', {
+				text: filename,
+				download: filename,
+				href: URL.createObjectURL(zipBlob)
+			});
+			exportedTrackList.append(newLink);
+			exportedTrackList.append(', ' + UTILS.byteToHumanReadableSize(zipBlob.size));
 		}
 	} else {
 		exportedTrackList.append($('<a>', {
@@ -367,7 +458,7 @@ function mergePreprocessed(){
 
 // 参数idxes为整数的数组
 function downloadGpsPaths(idxes) {
-	let costTimestampBegin = DF.now();
+	const costTimestampBegin = DF.now();
 	beforeDownloadGpsPaths();
 
 	const requestInstance = new RD.RequestDecorator({
@@ -425,10 +516,10 @@ $('.set-gpx-src').click(function () {
 		downloadGpsPaths(idxes);
 
 	} else {
-		let costTimestampBegin = DF.now();
+		const costTimestampBegin = DF.now();
 		$('#entryList').empty();
-		let files = $("#fetch-gps-file-upload")[0].files;
-		let fileCount = files.length;
+		const files = $("#fetch-gps-file-upload")[0].files;
+		const fileCount = files.length;
 
 		if (fileCount <= 0) {
 			appendError('请至少上传一个文件');
@@ -586,7 +677,7 @@ function setProgress(value) {
 	}
 }
 
-loadArchiveFormats(['tar'], function () {
+loadArchiveFormats(['tar','zip'], function () {
 	let button = $('#fetch-gps-file-list');
 	button.html("从记录仪获取");
 	button.prop('disabled', false);
