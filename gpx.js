@@ -66,7 +66,7 @@ class Document
     {
         const parser = new FXP.fxp.XMLParser(XMLParserOptions);
         const gpxJson = parser.parse(content);
-        if(gpxJson){
+        if(gpxJson && 'gpx' in gpxJson){
             let ret = new Document(undefined);
             let docJson = gpxJson.gpx;
             ret.name = docJson.name;

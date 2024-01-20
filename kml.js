@@ -77,7 +77,7 @@ class Document
     {
         const parser = new FXP.fxp.XMLParser(XMLParserOptions);
         const kmlJson = parser.parse(content);
-        if(kmlJson){
+        if(kmlJson && 'kml' in kmlJson && 'Document' in kmlJson.kml){
             let ret = new Document(undefined);
             let docJson = kmlJson.kml.Document;
             ret.name = docJson.name;

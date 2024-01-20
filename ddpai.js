@@ -11,6 +11,7 @@ export {
 import * as WP from './waypoint.js';
 
 const LocaTimestampOffset = (new Date()).getTimezoneOffset() * 60; // GMT与本地时区相差秒数，若东八区则该值为负数
+const LatLonDecimal = 6; // 经纬度的小数位数，6位足够了。按照1纬度111km计算，保留六位小数可以精确到0.1米
 
 /**
  * 整合多个段为单独连续的一部分 https://leetcode.com/problems/merge-intervals
@@ -113,7 +114,7 @@ function gpxToWayPointDict(gpxFileContents) {
     const dateObj = new Date();
 
     // GPGGA条目没有日期信息，只有时间信息，因此正常的顺序应该是先出现GPRMC，再紧随GPGGA，以下变量用于解决顺序颠倒问题
-    let GPGGAResult = undefined; // 保存上次GPGGA的高度、hdop信息，提供给GPRMC存储
+    let GPGGAResult = {}; // 保存上次GPGGA的高度、hdop信息，提供给GPRMC存储
     let GPRMCTime = undefined; // 保存上次GPRMC时间信息，转成纯数字
     let GPGGATime = undefined; // 保存上次GPGGA时间信息，转成纯数字
 
@@ -159,10 +160,10 @@ function gpxToWayPointDict(gpxFileContents) {
             // column
             timeString = timeString.substr(0, 6);
             GPRMCTime = parseInt(timeString);
-            const latSgn = columns[4] === 'N' ? 1 : -1;
-            const lonSgn = columns[6] === 'E' ? 1 : -1;
-            const knots = parseFloat(columns[7]);
-            const heading = parseFloat(columns[8]);
+            const latSgn = columns[4] === 'N' ? 1.0 : -1.0;
+            const lonSgn = columns[6] === 'E' ? 1.0 : -1.0;
+            const knots = columns[7];
+            const heading = columns[8];
 
             // datetime
             const year = 2000 + parseInt(dateString.substr(4, 2));
@@ -176,17 +177,22 @@ function gpxToWayPointDict(gpxFileContents) {
             dateObj.setUTCHours(hour, minute, second, 0);
             timestamp = Math.trunc(dateObj.getTime() / 1000);
 
-            updateReturnValue(timestamp, {
-                'lat': dddmmToDecimal(lat) * latSgn,
-                'lon': dddmmToDecimal(lon) * lonSgn,
-                'speed': 1.852 * knots, // 速度单位：km/h
-                'heading': heading // 航向单位：度
-            });
+            let GPRMCResult = {
+                'lat': dddmmToDecimal(lat).toFixed(LatLonDecimal) * latSgn,
+                'lon': dddmmToDecimal(lon).toFixed(LatLonDecimal) * lonSgn
+            };
+
+            if(knots.length)
+                GPRMCResult['speed'] = 1.852 * parseFloat(knots); // 速度单位：km/h
+
+            if(heading.length)
+                GPRMCResult['heading'] = parseFloat(heading); // 航向单位：度
+
+            updateReturnValue(timestamp, GPRMCResult);
 
             if(GPGGATime === GPRMCTime){
-                updateReturnValue(timestamp, GPGGAResult);
+                updateReturnValue(timestamp, GPGGAResult); // merge GPGGA and GPRMC
                 GPGGATime = undefined; // reset
-                GPGGAResult = undefined;
             }
         } else if (line.startsWith('$GPGGA')) {
             const columns = line.split(comma);
@@ -211,14 +217,14 @@ function gpxToWayPointDict(gpxFileContents) {
             GPGGATime = parseInt(timeString);
             const hdop = columns[8];
             const altitude = columns[9];
-            if (altitude.length === 0 || hdop.length === 0)
-                return;
+
+            if(hdop.length)
+                GPGGAResult['hdop'] = parseFloat(hdop); // 水平精度单位：米
+
+            if (altitude.length)
+                GPGGAResult['altitude'] = parseFloat(altitude); // 海拔高度单位：米
 
             timeString = timeString.substr(0, 6);
-            GPGGAResult = {
-                'hdop' : parseFloat(hdop), // 水平精度单位：米
-                'altitude' : parseFloat(altitude) // 海拔高度单位：米
-            };
             if (GPGGATime === GPRMCTime && timestamp != 0)
                 updateReturnValue(timestamp, GPGGAResult); // 属于正常情况，即GPGGA那一行，出现在GPRMC后
         }

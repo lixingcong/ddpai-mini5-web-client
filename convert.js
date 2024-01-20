@@ -4,27 +4,38 @@ import * as DF from './date-format.js'
 import * as TRACK from './track.js'
 import * as KML from './kml.js';
 import * as GPX from './gpx.js';
+import * as UTILS from './utils.js';
+
+window.list_all_files=list_all_files;
 
 var g_errorCount = 0;
 var g_fileCount = 0;
-var g_Files = []; // MyFile对象
+var g_files = []; // MyFile对象
 var g_enableBeautify = false; // 是否启用美化
 
 class MyFile
 {
-    constructor(srcName)
+    constructor(name)
     {
-        this.srcName = srcName;
-        this.destName = undefined;
-        this.srcContent = undefined;
-        this.destConetnt = undefined;
-        this.trackFile = undefined;
+        this.name = name;
+        this.content = undefined;
+        this.keepSameFormat = false; // 当目标格式与源格式相同时，保持原样，无需转换
     }
 }
 
-const appendSrcFile = (myFile) => {
-    g_Files.push(myFile);
-    setProgress((g_Files.length) / g_fileCount);
+const appendFile = (myFile) => {
+    g_files.push(myFile);
+    setProgress(g_files.length / g_fileCount); // 始终达不到100%，最后需要压缩表示100
+}
+
+function appendBlobToHtml(dom, blob, filename) {
+    const newLink = $('<a>', {
+        text: filename,
+        download: filename,
+        href: URL.createObjectURL(blob)
+    });
+    dom.append(newLink);
+    dom.append(', '+UTILS.byteToHumanReadableSize(blob.size) + '<br/>');
 }
 
 $('#convert').click(function () {
@@ -40,25 +51,28 @@ $('#convert').click(function () {
 
     // reset status
     g_fileCount=fileCount;
-    g_Files=[];
+    g_files=[];
     setProgress(0);
+    clearErrors();
 
     const exportedTrackList = $('#exportedTrackList');
-    $('#exportedTrackList').empty();
+    exportedTrackList.empty();
+
+    $('#individualTrackList').empty();
 
     const infoList=$('#infoList')
     infoList.empty();
 
     g_enableBeautify = $('#enable-export-beautify').prop('checked');
-
     const DestFileFormat = $('select#select-convert-format').find(":selected").val();
+
     let promises = [];
     for(let i=0;i<fileCount;++i){
         const f = srcFiles[i];
 
         promises.push(promiseReadBlob(f).then((myFile) => {
             return promiseConvertFormat(myFile, DestFileFormat).then((myFile) => {
-                appendSrcFile(myFile);
+                appendFile(myFile);
             })
         }));
     }
@@ -70,19 +84,28 @@ $('#convert').click(function () {
 			}
 		});
 
-        const description = '转换'+DestFileFormat+'_'+DF.timestampToString(costTimestampBegin / 1000, 'yyyyMMdd-hhmmss');
-        const zip = new JSZip();
-        const folder = zip.folder(description);
-        let counter = 0;
-        g_Files.forEach((myFile) => {
-            if(myFile && undefined != myFile.destConetnt){
-                folder.file(myFile.destName, myFile.destConetnt);
-                ++counter;
-            }
-        });
+        g_files = g_files.filter(myFile => { return myFile && undefined != myFile.content; });
 
-        if(counter>0){
-            var zipBlob = zip.generate({
+        let stat = {
+            converted: 0,
+            same: 0,
+        };
+
+        if(g_files.length > 0){
+            const zipHint = '转换'+DestFileFormat+'合辑_'+DF.timestampToString(costTimestampBegin / 1000, 'yyyyMMdd-hhmmss');
+            const zip = new JSZip();
+            const zipFolder = zip.folder(zipHint);
+
+            g_files.forEach((myFile) => {
+                zipFolder.file(myFile.name, myFile.content);
+
+                if (myFile.keepSameFormat)
+                    ++stat.same;
+                else
+                    ++stat.converted;
+            });
+
+            const zipBlob = zip.generate({
                 compression: "DEFLATE",
                 compressionOptions : {level:6},
                 type: "blob",
@@ -90,13 +113,8 @@ $('#convert').click(function () {
                 mimeType: 'application/zip'
             });
 
-            let filename = description+'.zip';
-            let newLink = $('<a>', {
-                text: filename,
-                download: filename,
-                href: URL.createObjectURL(zipBlob)
-            });
-            exportedTrackList.append(newLink);
+            appendBlobToHtml(exportedTrackList, zipBlob, zipHint+'.zip');
+            exportedTrackList.append('<button id="list-all-files" onclick="list_all_files(this)">预览压缩包</button>');
         } else {
             exportedTrackList.append($('<a>', {
                 text: 'Zip文件内容为空白',
@@ -107,9 +125,15 @@ $('#convert').click(function () {
 
 		setProgress(1);
 
-        infoList.append((DF.now() - costTimestampBegin) + 'ms');
+        infoList.append('源数目: '+g_fileCount+', 已转换: '+stat.converted+ ', 无需转换: '+  stat.same + '<br/>耗时'+ (DF.now() - costTimestampBegin) + 'ms');
 	});
 });
+
+function clearErrors() {
+	$('#errorListHeader').css('display', 'none');
+	$('#errorListBody').empty();
+	g_errorCount = 0;
+}
 
 function appendError(s) {
 	if (g_errorCount <= 0) {
@@ -137,6 +161,14 @@ function setProgress(value) {
 	}
 }
 
+function list_all_files(dom)
+{
+    dom.remove();
+    const LinksDiv=$('#individualTrackList');
+    LinksDiv.append('压缩包内容：<br/>')
+    g_files.forEach((myFile) => { appendBlobToHtml(LinksDiv, new Blob([myFile.content]), myFile.name); });
+}
+
 loadArchiveFormats(['zip'], function () {
 	let button = $('#convert');
 	button.html("执行转换");
@@ -149,7 +181,7 @@ const promiseReadBlob = (blob) => new Promise(function (resolve, reject) {
     const reader = new FileReader();
     reader.onload = () => {
         let f = new MyFile(blob.name);
-        f.srcContent = reader.result;
+        f.content = reader.result;
         resolve(f);
     };
     reader.onerror = reject;
@@ -159,52 +191,55 @@ const promiseReadBlob = (blob) => new Promise(function (resolve, reject) {
 
 const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolve, reject) {
     // API: resolve(MyFile)
-    const srcNameSplited = myFile.srcName.split('.');
+    const srcName = myFile.name;
+    const srcNameSplited = srcName.split('.');
     if(srcNameSplited.length<2){
-        reject(new Error('Cannot find filename-ext: ' + myFile.srcName));
+        reject(new Error('Invalid file extension: ' + srcName));
         return;
     }
 
     const srcExtName = srcNameSplited[srcNameSplited.length-1].toLowerCase(); // 取出扩展名
 
+    // set new name
+    const srcRawNameLength = srcName.length - srcExtName.length;
+    const srcRawName = srcName.substring(0, srcRawNameLength);
+    myFile.name=srcRawName+destFormat;
+
+    // skip if has same format
     if(srcExtName == destFormat){
-        myFile.destName=myFile.srcName
-        myFile.destConetnt =myFile.srcContent;
+        myFile.keepSameFormat = true;
         resolve(myFile);
         return; // No need for convert
-    }else{
-        const srcRawNameLength = myFile.srcName.length - srcExtName.length;
-        const srcRawName = myFile.srcName.substring(0, srcRawNameLength);
-        myFile.destName=srcRawName+destFormat;
     }
 
+    let trackFile = undefined;
     switch(srcExtName){
         case 'kml':
-            const kmlDoc = KML.Document.fromFile(myFile.srcContent);
+            const kmlDoc = KML.Document.fromFile(myFile.content);
             if(kmlDoc)
-                myFile.trackFile=TRACK.TrackFile.fromKMLDocument(kmlDoc);
+                trackFile=TRACK.TrackFile.fromKMLDocument(kmlDoc);
             break;
         case 'gpx':
-            const gpxDoc = GPX.Document.fromFile(myFile.srcContent);
+            const gpxDoc = GPX.Document.fromFile(myFile.content);
             if(gpxDoc)
-                myFile.trackFile=TRACK.TrackFile.fromGPXDocument(gpxDoc);
+                trackFile=TRACK.TrackFile.fromGPXDocument(gpxDoc);
             break;
         default:
-            reject(new Error('Unsupport file: ' + myFile.srcName));
+            reject(new Error('Unsupport file extension: ' + srcExtName + ' of ' + srcName));
             return;
     }
 
-    if(undefined==myFile.trackFile){
-        reject(new Error('Construct track file failed: ' + myFile.srcName));
+    if(undefined==trackFile){
+        reject(new Error('Failed to build TrackFile object: ' + srcName));
         return;
     }
 
     switch(destFormat){
         case 'kml':
-            myFile.destConetnt = myFile.trackFile.toKMLDocument().toFile(g_enableBeautify);
+            myFile.content = trackFile.toKMLDocument().toFile(g_enableBeautify);
             break;
         case 'gpx':
-            myFile.destConetnt = myFile.trackFile.toGPXDocument().toFile(g_enableBeautify);
+            myFile.content = trackFile.toGPXDocument().toFile(g_enableBeautify);
             break;
         default:
             reject(new Error('Unsupport dest format: ' + destFormat));

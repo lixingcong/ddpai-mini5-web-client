@@ -309,14 +309,14 @@ function exportToTrack(singleFile) {
 				mimeType: 'application/zip'
 			});
 
-			let filename = '合辑_'+fileNameTsFromTo(tsFrom,tsTo)+'.zip';
+			let filename = '轨迹合辑_'+fileNameTsFromTo(tsFrom,tsTo)+'.zip';
 			let newLink = $('<a>', {
 				text: filename,
 				download: filename,
 				href: URL.createObjectURL(zipBlob)
 			});
-			exportedTrackList.append(newLink);
-			exportedTrackList.append(', ' + UTILS.byteToHumanReadableSize(zipBlob.size));
+			exportedTrackList.prepend(', ' + UTILS.byteToHumanReadableSize(zipBlob.size)+'<br/>');
+			exportedTrackList.prepend(newLink);
 		}
 	} else {
 		exportedTrackList.append($('<a>', {
