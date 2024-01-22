@@ -12,6 +12,9 @@ var g_errorCount = 0;
 var g_fileCount = 0;
 var g_files = []; // MyFile对象
 var g_enableBeautify = false; // 是否启用美化
+var g_forceConvert = false; // 是否强制转相同格式
+var g_trackFileHookScript = undefined;
+var g_useTrackFileHook = false;
 
 class MyFile
 {
@@ -64,7 +67,17 @@ $('#convert').click(function () {
     infoList.empty();
 
     g_enableBeautify = $('#enable-export-beautify').prop('checked');
+    g_forceConvert = $('#force-convert-same-fmt').prop('checked');
+    g_useTrackFileHook = $('#use-trackfile-hook').prop('checked');
     const DestFileFormat = $('select#select-convert-format').find(":selected").val();
+
+    // Load custom hook
+    if(g_trackFileHookScript)
+        document.head.removeChild(g_trackFileHookScript);
+    g_trackFileHookScript = document.createElement('script');
+    const trackFileHook=$('#trackfile-hook-func').val();
+    g_trackFileHookScript.appendChild(document.createTextNode('window.trackFileHook='+trackFileHook+';'));
+    document.head.appendChild(g_trackFileHookScript);
 
     let promises = [];
     for(let i=0;i<fileCount;++i){
@@ -127,6 +140,15 @@ $('#convert').click(function () {
 
         infoList.append('源数目: '+g_fileCount+', 已转换: '+stat.converted+ ', 无需转换: '+  stat.same + '<br/>耗时'+ (DF.now() - costTimestampBegin) + 'ms');
 	});
+});
+
+$('#use-trackfile-hook').change(function(){
+    const checked = $('#use-trackfile-hook').prop('checked');
+    const textArea = $('#trackfile-hook-func');
+    if(checked)
+        textArea.show();
+    else
+        textArea.hide();
 });
 
 function clearErrors() {
@@ -206,7 +228,7 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
     myFile.name=srcRawName+destFormat;
 
     // skip if has same format
-    if(srcExtName == destFormat){
+    if(false == g_forceConvert && srcExtName == destFormat){
         myFile.keepSameFormat = true;
         resolve(myFile);
         return; // No need for convert
@@ -232,6 +254,11 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
     if(undefined==trackFile){
         reject(new Error('Failed to build TrackFile object: ' + srcName));
         return;
+    }
+
+    if(g_useTrackFileHook && window.trackFileHook){
+        trackFile.hookFunc = window.trackFileHook;
+        trackFile.hookFunc();
     }
 
     switch(destFormat){

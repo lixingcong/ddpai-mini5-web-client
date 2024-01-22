@@ -145,7 +145,7 @@ class PlaceMark
 
 class Style
 {
-    constructor(id, lineColor, lineWidth)
+    constructor(id, lineColor=undefined, lineWidth=undefined)
     {
         this.id = id;
         this.lineColor = lineColor;
@@ -167,8 +167,10 @@ class Style
     {
         let ret = new Style;
         ret.id = o['@id'];
-        ret.lineColor = o.LineStyle.color;
-        ret.lineWidth = o.LineStyle.width;
+        if(undefined != o.LineString){
+            ret.lineColor = o.LineStyle.color;
+            ret.lineWidth = o.LineStyle.width;
+        }
         return ret;
     }
 }

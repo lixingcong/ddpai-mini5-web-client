@@ -34,7 +34,27 @@
 			<summary>其它参数</summary>
 			<div class="btn-container">
 				<label><input type="checkbox" id="enable-export-beautify"></input>美化缩进</label>
-				<span class="help-tip"><p>缩进：插入空白进行缩进对齐，牺牲文件尺寸，改善XML文件的可读性</p></span>			</div>
+				<span class="help-tip"><p>缩进：插入空白进行缩进对齐，牺牲文件尺寸，改善XML文件的可读性</p></span>
+				<label><input type="checkbox" id="force-convert-same-fmt"></input>若格式相同也转换</label>
+				<span class="help-tip"><p>若输入文件格式与输出一致，如kml转kml，也进行强制转换</p></span>
+			</div>
+			<div class="btn-container">
+				<label><input type="checkbox" id="use-trackfile-hook"></input>对TrackFile进行后处理</label>
+				<span class="help-tip"><p>构建TrackFile对象，对轨迹进行后处理，如将路径坐标偏移，或者移除高度信息，需要对本项目源码熟悉<br/>其中this参数为TrackFile对象</p></span>
+			</div>
+			<textarea id="trackfile-hook-func" rows="10" cols="42" style="display: none;">
+function(){
+ const offset = (wp) => {
+   const X = 0.1;
+   wp.lat += X;
+   wp.lon += X;
+   if (wp.altitude) wp.altitude += X;
+ }
+
+ this.points.forEach((p) => { offset(p.wayPoint); });
+ this.lines.forEach((path) => { path.wayPoints.forEach(offset); });
+ this.tracks.forEach((path) => { path.wayPoints.forEach(offset); });
+}</textarea>
 		</details>
 		<div id="progressBarDiv" style="display: none;">
 			<label>处理进度 </label>
