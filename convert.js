@@ -71,13 +71,19 @@ $('#convert').click(function () {
     g_useTrackFileHook = $('#use-trackfile-hook').prop('checked');
     const DestFileFormat = $('select#select-convert-format').find(":selected").val();
 
-    // Load custom hook
-    if(g_trackFileHookScript)
+    // Remove custom hook
+    if(g_trackFileHookScript){
         document.head.removeChild(g_trackFileHookScript);
-    g_trackFileHookScript = document.createElement('script');
-    const trackFileHook=$('#trackfile-hook-func').val();
-    g_trackFileHookScript.appendChild(document.createTextNode('window.trackFileHook='+trackFileHook+';'));
-    document.head.appendChild(g_trackFileHookScript);
+        g_trackFileHookScript=undefined;
+    }
+
+    // Load custom hook
+    if(g_useTrackFileHook){
+        g_trackFileHookScript = document.createElement('script');
+        const trackFileHook=$('#trackfile-hook-func').val();
+        g_trackFileHookScript.appendChild(document.createTextNode('window.trackFileHook='+trackFileHook+';'));
+        document.head.appendChild(g_trackFileHookScript);
+    }
 
     let promises = [];
     for(let i=0;i<fileCount;++i){
