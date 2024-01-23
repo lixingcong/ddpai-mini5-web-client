@@ -64,10 +64,12 @@ function secondToHumanReadableString(second) {
 
 // 字节转为'KB'或者'MB'
 function byteToHumanReadableSize(bytes) {
-	let sizes = ['B', 'K', 'M', 'G', 'T'];
-	if (bytes == 0) return '0B';
-	let i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-	return (bytes / Math.pow(1024, i)).toFixed(1) + sizes[i];
+	const texts = ['B', 'K', 'M', 'G', 'T'];
+	if (0 == bytes) return '0B';
+	const level = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    const num = bytes / Math.pow(1024, level);
+    const decimal = bytes < 1024 ? 0 : 1;
+	return num.toFixed(decimal) + texts[level];
 }
 
 function isObjectEmpty(obj){

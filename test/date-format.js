@@ -1,6 +1,7 @@
 "use strict"
 
 import * as DF from '../date-format.js';
+import * as TEST_COMMON from './test-common.js';
 
 const now =  (new Date()).getTime() / 1000;
 
@@ -16,7 +17,5 @@ printNow(false);
 printNow(true);
 
 const ts = 1705564686;
-if(DF.fromRfc3339(DF.toRfc3339(ts)) != ts){
-    console.warn('fromRfc3339 test failed!!!');
-    process.exit(-1);
-}
+TEST_COMMON.assert(DF.fromRfc3339(DF.toRfc3339(ts)) == ts,  'fromRfc3339 test failed!!!');
+console.log('Test passed');

@@ -5,6 +5,7 @@
 
 import * as TRACK from '../track.js'
 import * as KML from '../kml.js';
+import * as HOOK from '../trackfile-hook-sample.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
@@ -42,7 +43,7 @@ function printHelp()
     console.log('Usage:');
     console.log('  node '+ Filename+' [OPTIONS] --input=/path/to/1.kml --output=/path/to/2.kml');
     console.log('OPTIONS:')
-    console.log('  --removeAltitideCoord=1234    Remove those coords whose altitude is 1234');
+    console.log('  --removeAltitideCoord         Remove those coords whose altitude is 0');
     console.log('  --beautify                    Beautify the ouput with indents');
     console.log('  --help                        Print this help');
 }
@@ -57,9 +58,8 @@ function die(s)
 
 class Args {
     constructor() {
-        // 移除<Coordinates>和<gx:coord>中的高度数据，undefined表示参数不生效
-        // 如：设置为0，即将所有点中高度为0的高度数据移除
-        this.removeAltitideCoord = undefined;
+        // 移除<Coordinates>和<gx:coord>中的高度数据，高度为0的高度数据移除
+        this.removeAltitideCoord = false;
 
         // 输入文件完整路径
         this.inputFilePath = undefined;
@@ -92,7 +92,7 @@ Object.keys(InputArgs).forEach(key => {
         case 'output':
             args.outputFilePath = value;
         case 'removeAltitideCoord':
-            args.removeAltitideCoord = value;
+            args.removeAltitideCoord = true;
             break;
         case 'help':
             printHelp();
@@ -119,28 +119,8 @@ fs.readFile(args.inputFilePath, 'utf-8', (error, content) =>{
 
     const trackFile = TRACK.TrackFile.fromKMLDocument(doc);
 
-    // 安装在TrackFile对象上的钩子函数
-    trackFile.hookFunc = function()
-    {
-        // 裁剪不合适的海拔坐标
-        const RA = args.removeAltitideCoord;
-        if(undefined != RA){
-            const checkPathAltitude = (path) => {
-                path.wayPoints.forEach((wayPoint) => {
-                    if(wayPoint.altitude == RA)
-                        wayPoint.altitude.altitude = undefined; // Clear it
-                });
-            }
-
-            this.points.forEach((point) => {
-                if(point.wayPoint.altitude == RA)
-                    point.wayPoint.altitude=undefined; // Clear it
-            });
-            this.lines.forEach(checkPathAltitude);
-            this.tracks.forEach(checkPathAltitude);
-        }
-    }
-    trackFile.hookFunc();
+    if(args.removeAltitideCoord)
+        HOOK.removeSlightlyMoveCoords(trackFile);
 
     fs.writeFile(args.outputFilePath, trackFile.toKMLDocument().toFile(args.beautify), (error) => {
         if(error)

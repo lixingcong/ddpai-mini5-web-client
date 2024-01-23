@@ -5,7 +5,8 @@ import * as fs from 'fs';
 export {
     writeFile,
     readFile,
-    isObjectEqual
+    isObjectEqual,
+    assert
 };
 
 const writeFile = (path, content, callback) => {
@@ -43,3 +44,10 @@ const readFile = (path, callback) => {
 const isObjectEqual = (a, b) => {
     return JSON.stringify(a) === JSON.stringify(b);
 };
+
+const assert = (cond, info) => {
+    if(!cond) {
+        console.error('Test failed: '+info);
+        process.exit(-1);
+    }
+}

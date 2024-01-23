@@ -262,10 +262,8 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
         return;
     }
 
-    if(g_useTrackFileHook && window.trackFileHook){
-        trackFile.hookFunc = window.trackFileHook;
-        trackFile.hookFunc();
-    }
+    if(g_useTrackFileHook && window.trackFileHook)
+        window.trackFileHook(trackFile);
 
     switch(destFormat){
         case 'kml':

@@ -39,9 +39,6 @@ class TrackFile
         this.points = []; // Point对象数组
         this.lines = []; // Path对象数组，没有时间戳
         this.tracks = []; // Path对象数组
-
-        // 自定义的修改数据函数，如将路径中的时间信息做随机化，或者将坐标偏移，或者移除高度信息
-        this.hookFunc = function(){};
     }
 
     toKMLDocument()
