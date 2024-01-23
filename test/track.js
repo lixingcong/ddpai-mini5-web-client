@@ -3,12 +3,14 @@ import * as WP from '../waypoint.js';
 import * as TEST_COMMON from './test-common.js';
 
 let track = new TRACK.TrackFile('DocName');
+track.description = "Doc description xxx";
 
 if(1){
     track.points = [
         new TRACK.Point('Point 1', new WP.WayPoint(22.1234, 114.1234)),
         new TRACK.Point('Point 2', new WP.WayPoint(22.1235, 114.1235))
     ];
+    track.points.forEach((p, idx) => {p.description='Point description '+(1+idx)});
 }
 
 if(1){
@@ -24,6 +26,7 @@ if(1){
             new WP.WayPoint(22.1248, 114.1238)
         ])
     ];
+    track.lines.forEach((p, idx) => {p.description='Line description '+(1+idx)});
 }
 
 if(1){
@@ -41,6 +44,7 @@ if(1){
             new WP.WayPoint(22.1248, 114.1238, timestamp++)
         ])
     ];
+    track.tracks.forEach((p, idx) => {p.description='Track description '+(1+idx)});
 }
 
 if(1){

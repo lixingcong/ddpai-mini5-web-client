@@ -29,6 +29,7 @@ const XMLParserOptions={
     ignoreAttributes: false,
     parseAttributeValue: true,
     attributeNamePrefix: "@",
+    cdataPropName: "__cdata",
     isArray: (name, jpath, isLeafNode, isAttribute) => {
         if(isAttribute)
             return false;
@@ -147,6 +148,7 @@ class Style
 {
     constructor(id, lineColor=undefined, lineWidth=undefined)
     {
+        // Not fully support IconStyle,StyleMap...
         this.id = id;
         this.lineColor = lineColor;
         this.lineWidth = lineWidth;
@@ -154,6 +156,9 @@ class Style
 
     toObject()
     {
+        if(undefined == this.lineColor || undefined == this.lineWidth)
+            return undefined;
+
         return {
             '@id':this.id,
             'LineStyle':{
@@ -167,7 +172,7 @@ class Style
     {
         let ret = new Style;
         ret.id = o['@id'];
-        if(undefined != o.LineString){
+        if(undefined != o.LineStyle){
             ret.lineColor = o.LineStyle.color;
             ret.lineWidth = o.LineStyle.width;
         }
@@ -389,12 +394,14 @@ class Folder
     {
         this.name = name;
         this.placeMarks = placeMarks; // PlaceMark对象数组
+        this.description = undefined;
     }
 
     toObject()
     {
         return {
             'name' : this.name,
+            'description': this.description,
             'Placemark' : toObjects(this.placeMarks)
         };
     }
@@ -403,6 +410,7 @@ class Folder
     {
         let ret = new Folder;
         ret.name = o.name;
+        ret.description = o.description;
         if(undefined != o.Placemark)
             ret.placeMarks = o.Placemark.map(o => PlaceMark.fromObject(o));
         return ret;

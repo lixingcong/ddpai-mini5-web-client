@@ -22,6 +22,7 @@ const XMLParserOptions={
     ignoreAttributes: false,
     parseAttributeValue: true,
     attributeNamePrefix: "@",
+    cdataPropName: "__cdata",
     isArray: (name, jpath, isLeafNode, isAttribute) => {
         if(isAttribute)
             return false;
@@ -34,6 +35,7 @@ class Document
     constructor(name)
     {
         this.name = name;
+        this.description = undefined; // 仅处理desc标签，不处理cmt标签。（可让用户自行替换gpx文件中的cmt）
         this.trks = []; // Trk
         this.rtes = []; // Rte
         this.wpts = []; // Wpt
@@ -52,6 +54,7 @@ class Document
                 '@xmlns': 'http://www.topografix.com/GPX/1/1',
                 '@xsi:schemaLocation': 'http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd',
                 'name':this.name,
+                'desc':this.description,
                 'wpt':toObjects(this.wpts),
                 'rte':toObjects(this.rtes),
                 'trk':toObjects(this.trks)
@@ -70,6 +73,7 @@ class Document
             let ret = new Document(undefined);
             let docJson = gpxJson.gpx;
             ret.name = docJson.name;
+            ret.description = docJson.desc;
 
             if(undefined != docJson.wpt)
                 ret.wpts = docJson.wpt.map(o => Wpt.fromObject(o));
@@ -88,9 +92,10 @@ class Document
 
 class Wpt
 {
-    constructor(name, lat, lon, altitude=undefined, timestamp=undefined)
+    constructor(name, lat, lon, altitude=undefined, timestamp=undefined, description=undefined)
     {
         this.name = name;
+        this.description = description;
         this.lat = lat;
         this.lon = lon;
         this.altitude = altitude;
@@ -101,6 +106,7 @@ class Wpt
     {
         return {
             'name':this.name,
+            'desc':this.description,
             '@lat':this.lat,
             '@lon':this.lon,
             'ele':this.altitude,
@@ -114,15 +120,18 @@ class Wpt
         if(undefined != o.time)
             t = DF.fromRfc3339(o.time);
 
-        return new Wpt(o.name, o['@lat'], o['@lon'], o.ele, t);
+        let ret = new Wpt(o.name, o['@lat'], o['@lon'], o.ele, t);
+        ret.description = o.desc;
+        return ret;
     }
 }
 
 class Rte
 {
-    constructor(name, rtepts = [])
+    constructor(name, rtepts = [], description = undefined)
     {
         this.name = name;
+        this.description = description;
         this.rtepts = rtepts;
     }
 
@@ -130,6 +139,7 @@ class Rte
     {
         return {
             'name':this.name,
+            'desc':this.description,
             'rtept': toObjects(this.rtepts)
         };
     }
@@ -140,6 +150,7 @@ class Rte
         if(undefined != o.rtept)
             ret.rtepts = o.rtept.map(o => Rtept.fromObject(o));
 
+        ret.description=o.desc;
         return ret;
     }
 }
@@ -168,9 +179,10 @@ class Rtept
 
 class Trk
 {
-    constructor(name, trksegs = [])
+    constructor(name, trksegs = [], description = undefined)
     {
         this.name = name;
+        this.description = description;
         this.trksegs = trksegs;
     }
 
@@ -178,6 +190,7 @@ class Trk
     {
         return {
             'name': this.name,
+            'desc':this.description,
             'trkseg' :toObjects(this.trksegs)
         };
     }
@@ -185,6 +198,7 @@ class Trk
     static fromObject(o)
     {
         let ret = new Trk(o.name);
+        ret.description=o.desc;
         if(undefined != o.trkseg)
             ret.trksegs = o.trkseg.map(o => Trkseg.fromObject(o));
 
