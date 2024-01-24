@@ -17,7 +17,7 @@ if(1){
     ];
 
     HOOK.timeShift(track);
-    const Expect = [86400,86401,86402].map((x) => x - 4 *3600);
+    const Expect = [86400,86401,86402].map(x => x - 4 *3600);
     for(let i=0;i<Expect.length;++i)
         TEST_COMMON.assert(track.lines[0].wayPoints[i].timestamp == Expect[i], 'timeShift index='+i);
 }
@@ -91,7 +91,7 @@ if(1){
             new WP.WayPoint(0,0.10001,103), // will be dropped
             new WP.WayPoint(0,0.10002,104), // will be dropped
             new WP.WayPoint(0,0.1001,105),
-            new WP.WayPoint(0,0.10013,106) // will be dropped
+            new WP.WayPoint(0,0.10013,106) // should be dropped, but not, because of tail
         ]),
         new TRACK.Path('P2',[
             new WP.WayPoint(1,0,100),
@@ -104,7 +104,7 @@ if(1){
 
     HOOK.sampleByDistance(track);
 
-    const Expect1 = [100,101,105];
+    const Expect1 = [100,101,105,106];
     const Expect2 = [100,102,104];
 
     TEST_COMMON.assert(track.lines[0].wayPoints.length == Expect1.length, 'sampleByDistance precheck 1');
@@ -136,14 +136,14 @@ if(1){
             new WP.WayPoint(0,0,206),
             new WP.WayPoint(0,0,207), // will be dropped
             new WP.WayPoint(0,0,210),
-            new WP.WayPoint(0,0,211) // will be dropped
+            new WP.WayPoint(0,0,211) // should be dropped, but not, because of tail
         ])
     ];
 
     HOOK.sampleByTimeInterval(track);
 
     const Expect1 = [100,102,104,106];
-    const Expect2 = [200,204,206,210];
+    const Expect2 = [200,204,206,210,211];
 
     TEST_COMMON.assert(track.tracks[0].wayPoints.length == Expect1.length, 'sampleByTimeInterval precheck 1');
     TEST_COMMON.assert(track.tracks[1].wayPoints.length == Expect2.length, 'sampleByTimeInterval precheck 2');

@@ -17,22 +17,22 @@ export {
 function timeShift(trackFile) {
     const OffsetHour = -4; // 向前调整4小时
     const OffsetSecond = OffsetHour * 3600;
-    const Offset = (wp) => { if(undefined != wp.timestamp) wp.timestamp += OffsetSecond; }
+    const Offset = wp => { if(undefined != wp.timestamp) wp.timestamp += OffsetSecond; }
 
-    trackFile.points.forEach((point) => { Offset(point.wayPoint); });
-    trackFile.lines.forEach((path) => { path.wayPoints.forEach(Offset); });
-    trackFile.tracks.forEach((path) => { path.wayPoints.forEach(Offset); });
+    trackFile.points.forEach(point => { Offset(point.wayPoint); });
+    trackFile.lines.forEach(path => { path.wayPoints.forEach(Offset); });
+    trackFile.tracks.forEach(path => { path.wayPoints.forEach(Offset); });
 }
 
 /**
  * 搜索坐标海拔为0的点，并将其海拔置为空白（去除噪声数据）
  */
 function clearInvalidAltitude(trackFile) {
-    const Clear = (wp) => { if (0 == wp.altitude) wp.altitude = undefined; }
+    const Clear = wp => { if (0 == wp.altitude) wp.altitude = undefined; }
 
-    trackFile.points.forEach((point) => { Clear(point.wayPoint); });
-    trackFile.lines.forEach((path) => { path.wayPoints.forEach(Clear); });
-    trackFile.tracks.forEach((path) => { path.wayPoints.forEach(Clear); });
+    trackFile.points.forEach(point => { Clear(point.wayPoint); });
+    trackFile.lines.forEach(path => { path.wayPoints.forEach(Clear); });
+    trackFile.tracks.forEach(path => { path.wayPoints.forEach(Clear); });
 }
 
 /**
@@ -70,7 +70,7 @@ function clearInvalidAltitude(trackFile) {
 function fixDescription(trackFile) {
     // 匹配<tagName>开头和</tagName>结尾
     const Regex = /^\<[a-zA-z0-9]*?\>.*\<\/[a-zA-z0-9]*?\>$/;
-    const Check = (o) => {
+    const Check = o => {
         if(undefined == o.description)
             return;
         if (typeof o.description === 'string' && o.description.match(Regex))
@@ -97,13 +97,15 @@ function removeAll(trackFile) {
 /**
  * 对轨迹抽样，精简轨迹（按位移阈值）
  * 将位移距离小于10米的点位剔除，只保留位移大于10米的点
+ * 注意：首尾两点不会被移除
  */
 function sampleByDistance(trackFile) {
     const MinDistance = 10;
-    const Check = (path) => {
+    const Check = path => {
         let lastWayPoint = undefined;
+        const tailIdx = path.wayPoints.length - 1;
         path.wayPoints.forEach((wp, idx, arr) => {
-            if (undefined == lastWayPoint) {
+            if (undefined == lastWayPoint || tailIdx == idx) {
                   lastWayPoint = wp;
                 return;
             }
@@ -122,13 +124,15 @@ function sampleByDistance(trackFile) {
 
 /**
  * 对轨迹抽样，精简轨迹（按固定时间间隔）
+ * 注意：首尾两点不会被移除
  */
 function sampleByTimeInterval(trackFile) {
     const Interval = 2; // 每2秒取样
-    const Check = (path) => {
+    const Check = path => {
         let lastWayPoint = undefined;
+        const tailIdx = path.wayPoints.length - 1;
         path.wayPoints.forEach((wp, idx, arr) => {
-            if (undefined == lastWayPoint) {
+            if (undefined == lastWayPoint || tailIdx == idx) {
                   lastWayPoint = wp;
                 return;
             }
@@ -146,13 +150,15 @@ function sampleByTimeInterval(trackFile) {
 
 /**
  * 对轨迹抽样，精简轨迹（按固定间隔点数）
+ * 注意：首尾两点不会被移除
  */
 function sampleByIndexInterval(trackFile) {
     const Interval = 3; // 每3个点取样
-    const Check = (path) => {
+    const Check = path => {
         let lastIndex = undefined;
+        const tailIdx = path.wayPoints.length - 1;
         path.wayPoints.forEach((wp, idx, arr) => {
-            if (undefined == lastIndex) {
+            if (undefined == lastIndex || tailIdx == idx) {
                   lastIndex = 0;
                 return;
             }

@@ -26,7 +26,7 @@ class MyFile
     }
 }
 
-const appendFile = (myFile) => {
+const appendFile = myFile => {
     g_files.push(myFile);
     setProgress(g_files.length / g_fileCount); // 始终达不到100%，最后需要压缩表示100
 }
@@ -89,8 +89,8 @@ $('#convert').click(function () {
     for(let i=0;i<fileCount;++i){
         const f = srcFiles[i];
 
-        promises.push(promiseReadBlob(f).then((myFile) => {
-            return promiseConvertFormat(myFile, DestFileFormat).then((myFile) => {
+        promises.push(promiseReadBlob(f).then(myFile => {
+            return promiseConvertFormat(myFile, DestFileFormat).then(myFile => {
                 appendFile(myFile);
             })
         }));
@@ -115,7 +115,7 @@ $('#convert').click(function () {
             const zip = new JSZip();
             const zipFolder = zip.folder(zipHint);
 
-            g_files.forEach((myFile) => {
+            g_files.forEach(myFile => {
                 zipFolder.file(myFile.name, myFile.content);
 
                 if (myFile.keepSameFormat)
@@ -204,7 +204,7 @@ loadArchiveFormats(['zip'], function () {
 });
 
 // ---- promise 1 ----
-const promiseReadBlob = (blob) => new Promise(function (resolve, reject) {
+const promiseReadBlob = blob => new Promise(function (resolve, reject) {
     // API: resolve(MyFile)
     const reader = new FileReader();
     reader.onload = () => {

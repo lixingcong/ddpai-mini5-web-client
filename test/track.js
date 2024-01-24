@@ -7,7 +7,7 @@ track.description = "Doc description xxx";
 
 if(1){
     track.points = [
-        new TRACK.Point('Point 1', new WP.WayPoint(22.1234, 114.1234)),
+        new TRACK.Point('Point 1', new WP.WayPoint(22.1234, 114.1234, 10, 20)),
         new TRACK.Point('Point 2', new WP.WayPoint(22.1235, 114.1235))
     ];
     track.points.forEach((p, idx) => {p.description='Point description '+(1+idx)});
@@ -16,9 +16,9 @@ if(1){
 if(1){
     track.lines = [
         new TRACK.Path('Line 1', [
-            new WP.WayPoint(22.1236, 114.1236),
-            new WP.WayPoint(22.1237, 114.1237),
-            new WP.WayPoint(22.1238, 114.1238)
+            new WP.WayPoint(22.1236, 114.1236, undefined, 10),
+            new WP.WayPoint(22.1237, 114.1237, 0, 20),
+            new WP.WayPoint(22.1238, 114.1238, 1, 30)
         ]),
         new TRACK.Path('Line 2', [
             new WP.WayPoint(22.1246, 114.1236),
@@ -50,21 +50,39 @@ if(1){
 if(1){
     // KML
     const kmlDoc= track.toKMLDocument();
-    //console.log(kmlDoc);
-    TEST_COMMON.writeFile('/tmp/track-1.kml', kmlDoc.toFile(true));
+    const kmlFileContent = kmlDoc.toFile(true);
+    // console.log(kmlDoc);
 
     const trackFromDoc = TRACK.TrackFile.fromKMLDocument(kmlDoc);
-    //console.log(trackFromDoc);
-    TEST_COMMON.writeFile('/tmp/track-2.kml', trackFromDoc.toKMLDocument().toFile(true));
+    const trackToKmlContent = trackFromDoc.toKMLDocument().toFile(true);
+    // console.log(trackFromDoc);
+
+    if (TEST_COMMON.md5sum(kmlFileContent) != TEST_COMMON.md5sum(trackToKmlContent)) {
+        TEST_COMMON.assert(false, 'Save/Load KML');
+        TEST_COMMON.writeFile('/tmp/track-1-diff.kml', trackToKmlContent);
+    }
+
+    if(0)
+        TEST_COMMON.writeFile('/tmp/track-1.kml', kmlFileContent);
 }
 
 if(1){
     // GPX
     const gpxDoc = track.toGPXDocument();
+    const gpxFileContent = gpxDoc.toFile(true);
     // console.log(gpxDoc);
-    TEST_COMMON.writeFile('/tmp/track-1.gpx', gpxDoc.toFile(true));
 
     const trackFromDoc = TRACK.TrackFile.fromGPXDocument(gpxDoc);
+    const trackToGpxContent = trackFromDoc.toGPXDocument().toFile(true);
     //console.log(trackFromDoc);
-    TEST_COMMON.writeFile('/tmp/track-2.gpx', trackFromDoc.toGPXDocument().toFile(true));
+
+    if (TEST_COMMON.md5sum(gpxFileContent) != TEST_COMMON.md5sum(trackToGpxContent)) {
+        TEST_COMMON.assert(false, 'Save/Load GPX');
+        TEST_COMMON.writeFile('/tmp/track-1-diff.gpx', trackToGpxContent);
+    }
+
+    if(0)
+        TEST_COMMON.writeFile('/tmp/track-1.gpx', gpxFileContent);
 }
+
+console.log('Test passed');

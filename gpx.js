@@ -13,7 +13,7 @@ export {
 import * as DF from './date-format.js';
 import * as FXP from './js/fxp.min.js';
 
-const toObjects = (arr) => arr.map( c => c.toObject());
+const toObjects = arr => arr.map(c => c.toObject());
 
 // 需要特殊处理xml转出来的数组（个数为1时很特别，因此要始终看作数组）
 const AlwaysArray = ['trk','trkseg','trkpt', 'wpt', 'rte', 'rtept'];
@@ -120,8 +120,7 @@ class Wpt
         if(undefined != o.time)
             t = DF.fromRfc3339(o.time);
 
-        let ret = new Wpt(o.name, o['@lat'], o['@lon'], o.ele, t);
-        ret.description = o.desc;
+        let ret = new Wpt(o.name, o['@lat'], o['@lon'], o.ele, t, o.desc);
         return ret;
     }
 }
@@ -155,25 +154,11 @@ class Rte
     }
 }
 
-class Rtept
+class Rtept extends Wpt
 {
-    constructor(lat, lon)
+    constructor(lat, lon, altitude=undefined)
     {
-        this.lat = lat;
-        this.lon = lon;
-    }
-
-    toObject()
-    {
-        return {
-            '@lat':this.lat,
-            '@lon':this.lon
-        };
-    }
-
-    static fromObject(o)
-    {
-        return new Rtept(o['@lat'], o['@lon']);
+        super(undefined, lat, lon, altitude)
     }
 }
 
@@ -229,32 +214,10 @@ class Trkseg
     }
 }
 
-class Trkpt
+class Trkpt extends Wpt
 {
     constructor(lat, lon, timestamp, altitude = undefined)
     {
-        this.lat = lat;
-        this.lon = lon;
-        this.altitude = altitude;
-        this.timestamp = timestamp;
-    }
-
-    toObject()
-    {
-        return {
-            '@lat':this.lat,
-            '@lon':this.lon,
-            'time':DF.toRfc3339(this.timestamp),
-            'ele':this.altitude
-        };
-    }
-
-    static fromObject(o)
-    {
-        let t = 0;
-        if(undefined != o.time)
-            t = DF.fromRfc3339(o.time);
-
-        return new Trkpt(o['@lat'], o['@lon'], t, o.ele);
+        super(undefined,lat,lon,altitude,timestamp);
     }
 }

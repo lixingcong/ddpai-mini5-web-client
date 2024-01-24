@@ -12,10 +12,10 @@ if(1){
 
 if(1){
     document.rtes.push(new GPX.Rte('Route 1', [
-        new GPX.Rtept(22.8820573, 114.5768273),
-        new GPX.Rtept(22.8821573, 114.5769273),
-        new GPX.Rtept(22.8822573, 114.5770273),
-        new GPX.Rtept(22.8823573, 114.5771273)
+        new GPX.Rtept(22.8820573, 114.5768273, 10),
+        new GPX.Rtept(22.8821573, 114.5769273, 12),
+        new GPX.Rtept(22.8822573, 114.5770273, 13),
+        new GPX.Rtept(22.8823573, 114.5771273, 14)
     ]));
 
     document.rtes.push(new GPX.Rte('Route 2', [

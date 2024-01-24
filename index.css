@@ -65,3 +65,7 @@ input[type="range"]{
 summary {
 	height: 1.8em;
 }
+
+textarea {
+	width: 100%;
+}

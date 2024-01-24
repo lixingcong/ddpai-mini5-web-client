@@ -17,7 +17,7 @@ const sessionIdFromCookie=()=>{
     return '';
 }
 
-const textToJson=(text)=>{
+const textToJson=text=>{
     let t=text.replaceAll('\\"','"').replaceAll('"{','{').replaceAll('}"','}');
     return JSON.parse(t);
 }
@@ -52,7 +52,7 @@ function promiseObtainSessionId()
 {
     let url=serverHostUrl+'/cmd.cgi?cmd=API_RequestSessionID';
     return promiseHttpAjax(url, 'POST', false).then(
-        (response)=>{
+        response=>{
             let j=textToJson(response);
             if(j && j.errcode===0){
                 document.cookie=cookieKey+'='+j.data.acSessionId;
@@ -68,7 +68,7 @@ function promiseRequestCertificate()
     let url=serverHostUrl+'/cmd.cgi?cmd=API_RequestCertificate';
     let body='{"user":"admin","password":"admin","level":0,"uid":"6b4014501d19a893"}';
     return promiseHttpAjax(url, 'POST', true, body).then(
-        (response)=>{
+        response=>{
             console.log(response);
             let j=textToJson(response);
             if(j && j.errcode===0)

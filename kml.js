@@ -5,6 +5,7 @@ export {
     Document,
     PlaceMark,
     Style,
+    Point,
     Coordinate,
     Coordinates,
     When,
@@ -18,9 +19,9 @@ export {
 import * as DF from './date-format.js';
 import * as FXP from './js/fxp.min.js';
 
-const toObject = (c) => c.toObject();
-const toObjects = (arr) => arr.map( c => c.toObject());
-const toStrings = (arr) => arr.map( c => c.toString());
+const toObject = c => c.toObject();
+const toObjects = arr => arr.map( c => c.toObject());
+const toStrings = arr => arr.map( c => c.toString());
 
 // XML文件中恒为数组的TagName
 const AlwaysArray = ['Style', 'Placemark', 'Folder', 'gx:coord', 'when'];
@@ -106,7 +107,7 @@ class PlaceMark
         this.name = name;
         this.description = undefined;
         this.styleId = undefined; // 字符串，样式的ID名字
-        this.point = undefined; // Coordinates对象
+        this.point = undefined; // Point对象
         this.gxTrack = undefined; // GxTrack对象
         this.gxMultiTrack = undefined; // GxMultiTrack对象
         this.lineString = undefined; // LineString对象
@@ -133,7 +134,7 @@ class PlaceMark
         if(undefined != o.styleUrl)
             ret.styleId = o.styleUrl.replace(/^#/g,'');
         if(undefined != o.Point)
-            ret.point = Coordinates.fromObject(o.Point);
+            ret.point = Point.fromObject(o.Point);
         if(undefined != o['gx:Track'])
             ret.gxTrack = GxTrack.fromObject(o['gx:Track']);
         if(undefined != o['gx:MultiTrack'])
@@ -182,11 +183,11 @@ class Style
 
 class Coordinate
 {
-    constructor(lat, lon)
+    constructor(lat, lon, altitude)
     {
         this.lat = lat;
         this.lon = lon;
-        this.altitude = undefined;
+        this.altitude = altitude;
     }
 
     toString()
@@ -213,27 +214,41 @@ class Coordinate
 
 class Coordinates
 {
-    constructor(coordinates)
+    constructor(coordinateArray)
     {
-        this.coordinates = coordinates; // Coordinate对象数组
+        this.coordinateArray = coordinateArray; // Coordinate对象数组
+    }
+
+    toString()
+    {
+        return toStrings(this.coordinateArray).join(' ');
+    }
+
+    static fromString(s)
+    {
+        return new Coordinates(s.split(' ').map(cs => Coordinate.fromString(cs)));
+    }
+}
+
+class Point
+{
+    constructor(coordinate, altitudeMode)
+    {
+        this.coordinate = coordinate;
+        this.altitudeMode = altitudeMode;
     }
 
     toObject()
     {
-        const coordinateStrs = toStrings(this.coordinates);
         return {
-            'coordinates': coordinateStrs.join(' ')
-        };
+            'altitudeMode':this.altitudeMode,
+            'coordinates':this.coordinate.toString()
+        }
     }
 
     static fromObject(o)
     {
-        const coordinateText = o['coordinates'];
-        if(undefined != coordinateText){
-            const coordinates = coordinateText.split(' ').map(s => Coordinate.fromString(s));
-            return new Coordinates(coordinates);
-        }
-        return undefined;
+        return new Point(Coordinate.fromString(o.coordinates), o.altitudeMode);
     }
 }
 
@@ -363,17 +378,18 @@ class GxMultiTrack
 
 class LineString
 {
-    constructor(coordinates)
+    constructor(coordinates, altitudeMode)
     {
-        this.coordinates = coordinates; // Coordinate对象数组
+        this.coordinates = coordinates; // Coordinates对象
+        this.altitudeMode = altitudeMode;
     }
 
     toObject()
     {
-        const coordinateStrs = toStrings(this.coordinates);
         return {
             'tessellate': 1,
-            'coordinates': coordinateStrs.join(' ')
+            'altitudeMode':this.altitudeMode,
+            'coordinates': this.coordinates.toString()
         };
     }
 
@@ -381,8 +397,7 @@ class LineString
     {
         const coordinateText = o['coordinates'];
         if(undefined != coordinateText){
-            const coordinates = coordinateText.split(' ').map(s => Coordinate.fromString(s));
-            return new LineString(coordinates);
+            return new LineString(Coordinates.fromString(coordinateText), o.altitudeMode);
         }
         return undefined;
     }

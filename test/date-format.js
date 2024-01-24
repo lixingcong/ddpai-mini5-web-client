@@ -5,7 +5,7 @@ import * as TEST_COMMON from './test-common.js';
 
 const now =  (new Date()).getTime() / 1000;
 
-const printNow = (utc) => {
+const printNow = utc => {
     console.log('utc = ' + utc);
     // S: 毫秒
     // q: 季度

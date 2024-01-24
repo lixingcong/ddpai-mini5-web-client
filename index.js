@@ -46,7 +46,7 @@ $('#fetch-gps-file-list').click(function () {
 	clearErrors();
 	tableMulitselStatus = true;
 
-	promiseHttpGetAjax(urlAPIGpsFileListReq).then((response) => {
+	promiseHttpGetAjax(urlAPIGpsFileListReq).then(response => {
 		g_gpsFileListReq = DDPAI.API_GpsFileListReqToArray(response);
 		if (g_gpsFileListReq.length > 0) {
 			const groupGpsFileListReq = () => {
@@ -127,7 +127,7 @@ $('#fetch-gps-file-list').click(function () {
 		} else {
 			entryList.html('GPS file list from server is empty!');
 		}
-	}, (rejectedReason) => {
+	}, rejectedReason => {
 		appendError(rejectedReason);
 	});
 });
@@ -250,7 +250,7 @@ function exportToTrack(singleFile) {
 			const ZeroPadLength = UTILS.intWidth(timestampsGrouped.length);
 			const trackFile = new TRACK.TrackFile;
 			timestampsGrouped.forEach((timestamps, idx) => {
-				const WayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+				const WayPoints = timestamps.map(ts => g_timestampToWayPoints[ts]);
 				const WayDistance = WP.wayDistance(WayPoints);
 				const WayPointFrom = WayPoints[0];
 				const WayPointTo = WayPoints[WayPoints.length-1];
@@ -275,8 +275,8 @@ function exportToTrack(singleFile) {
 			exportedTrackList.append(trackHint);
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
-			timestampsGrouped.forEach((timestamps) => {
-				const WayPoints = timestamps.map((ts) => g_timestampToWayPoints[ts]);
+			timestampsGrouped.forEach(timestamps => {
+				const WayPoints = timestamps.map(ts => g_timestampToWayPoints[ts]);
 				const WayDistance = WP.wayDistance(WayPoints);
 				const WayPointFrom = WayPoints[0];
 				const WayPointTo = WayPoints[WayPoints.length-1];
@@ -344,7 +344,7 @@ function promiseReadBlob(blob, isText) {
 }
 
 function promiseReadGpx(filename, blob) {
-	return promiseReadBlob(blob, true).then((textData) => {
+	return promiseReadBlob(blob, true).then(textData => {
 		const p = DDPAI.preprocessRawGpxFile(textData, 160, '\n');
 		if(!UTILS.isObjectEmpty(p))
 			g_gpxPreprocessContents[p['startTime']] = p['content'];
@@ -368,13 +368,13 @@ const promiseReadGit = async (filename, blob) => {
 	);
 
 	if (archive) {
-		const readEntryData = async (entry) => {
+		const readEntryData = async entry => {
 			return new Promise(function (resolve) {
 				entry.readData(resolve);
 			});
 		}
 
-		const readGpxFromEntry = async (e) => {
+		const readGpxFromEntry = async e => {
 			if (e.is_file) {
 				const entryData = await readEntryData(e);
 				if (entryData)
@@ -392,11 +392,11 @@ const promiseReadGit = async (filename, blob) => {
 				maxLimit: 4, // restrict max concurrent on mobile phones
 				requestApi: readGpxFromEntry
 			});
-			promises = archive.entries.map((e) => readFileDecorator.request(e));
+			promises = archive.entries.map(e => readFileDecorator.request(e));
 		} else
-			promises = archive.entries.map((e) => readGpxFromEntry(e));
+			promises = archive.entries.map(e => readGpxFromEntry(e));
 
-		return Promise.allSettled(promises).then((results) => {
+		return Promise.allSettled(promises).then(results => {
 			results.forEach(r => {
 				if (r.status === 'rejected') {
 					appendError(r.reason);
@@ -471,7 +471,7 @@ function downloadGpsPaths(idxes) {
 		let g = g_gpsFileListReq[idx];
 		g['filename'].forEach(filename => {
 			let url = serverHostUrl + '/' + filename;
-			promises.push(requestInstance.request(url, 'blob').then((blob) => {
+			promises.push(requestInstance.request(url, 'blob').then(blob => {
 				return parseGitAndGpxFromBlob(filename, blob);
 			}));
 		});
@@ -528,7 +528,7 @@ $('.set-gpx-src').click(function () {
 
 		// 处理上传的文件
 		setProgress(-1);
-		let promises = Object.keys(files).map((fileIndex) => {
+		let promises = Object.keys(files).map(fileIndex => {
 			let f = files[fileIndex];
 			let filename = f.name;
 			if (isFilenameGpxGit(filename))
@@ -536,7 +536,7 @@ $('.set-gpx-src').click(function () {
 			return Promise.reject(new Error('Filename is invalid: ' + filename));
 		});
 
-		Promise.allSettled(promises).then((results) => {
+		Promise.allSettled(promises).then(results => {
 			results.forEach(r => {
 				if (r.status === 'rejected') {
 					appendError(r.reason);

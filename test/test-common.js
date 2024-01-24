@@ -1,16 +1,18 @@
 "use strict"
 
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 export {
     writeFile,
     readFile,
     isObjectEqual,
-    assert
+    assert,
+    md5sum
 };
 
 const writeFile = (path, content, callback) => {
-    fs.writeFile(path, content, (error) => {
+    fs.writeFile(path, content, error => {
         let s = 'writeFile(' + path + '): ';
 
         if(error)
@@ -51,3 +53,5 @@ const assert = (cond, info) => {
         process.exit(-1);
     }
 }
+
+const md5sum = str => crypto.createHash('md5').update(str).digest('hex');

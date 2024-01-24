@@ -13,8 +13,7 @@ document.styles=[blueStyle, greenStyle];
 if(1){
     let placeMark = new KML.PlaceMark('POI 123');
     placeMark.description='This is my point!';
-    let pointCoord = new KML.Coordinate(22.8820573, 114.5768273);
-    placeMark.point = new KML.Coordinates([pointCoord]);
+    placeMark.point = new KML.Point(new KML.Coordinate(22.8820573, 114.5768273, 999), KML.AltitudeMode.Absolute);
     document.placeMarks.push(placeMark);
 }
 
@@ -51,12 +50,15 @@ if(1){
     let placeMark = new KML.PlaceMark('Line 01');
     placeMark.description='This is my line!';
     placeMark.styleId = 'GreenStyle';
-    placeMark.lineString = new KML.LineString([
-        new KML.Coordinate(22.8753703, 114.5686210),
-        new KML.Coordinate(22.8753240, 114.5684628),
-        new KML.Coordinate(22.8752790, 114.5683027),
-        new KML.Coordinate(22.8752370, 114.5681358)
-    ]);
+    placeMark.lineString = new KML.LineString(
+        new KML.Coordinates([
+            new KML.Coordinate(22.8753703, 114.5686210, 456),
+            new KML.Coordinate(22.8753240, 114.5684628, 457),
+            new KML.Coordinate(22.8752790, 114.5683027),
+            new KML.Coordinate(22.8752370, 114.5681358, 455)
+        ]),
+        KML.AltitudeMode.Absolute
+    );
     document.placeMarks.push(placeMark);
 }
 
@@ -66,8 +68,10 @@ if(1){
 
         for(let j =0;j<2;++j){
             let placeMark = new KML.PlaceMark('POI '+i+'-'+j);
-            let pointCoord = new KML.Coordinate(22.8620573+parseFloat(j), 114.5778273+parseFloat(j));
-            placeMark.point = new KML.Coordinates([pointCoord]);
+            placeMark.point = new KML.Point(
+                new KML.Coordinate(22.8620573+parseFloat(j), 114.5778273+parseFloat(j)),
+                KML.AltitudeMode.Absolute
+            );
             folder.placeMarks.push(placeMark);
         }
 

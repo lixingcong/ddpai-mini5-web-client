@@ -122,7 +122,7 @@ fs.readFile(args.inputFilePath, 'utf-8', (error, content) =>{
     if(args.removeAltitideCoord)
         HOOK.clearInvalidAltitude(trackFile);
 
-    fs.writeFile(args.outputFilePath, trackFile.toKMLDocument().toFile(args.beautify), (error) => {
+    fs.writeFile(args.outputFilePath, trackFile.toKMLDocument().toFile(args.beautify), error => {
         if(error)
             die(error);
         console.info('Write ok: '+args.outputFilePath);
