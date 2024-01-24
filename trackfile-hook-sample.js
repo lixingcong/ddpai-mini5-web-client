@@ -7,8 +7,7 @@ export {
     removeAll,
     sampleByDistance,
     sampleByTimeInterval,
-    sampleByIndexInterval,
-    print
+    sampleByIndexInterval
 };
 
 /**
@@ -176,9 +175,17 @@ function sampleByIndexInterval(trackFile) {
 }
 
 /**
- * 将轨迹打印到调试终端，以JSON形式展现，可以提供给其它编程语言进行进一步处理
+ * 将轨迹以json形式输出到浏览器下载栏，可以提供给其它编程语言进行进一步处理
  */
-function print(trackFile) {
-    console.log(JSON.stringify(trackFile));
-    // alert('Press F12 to grab the output');
+function downloadAsJson(trackFile) {
+    const filename = '导出'+trackFile.name+'.json'
+    const newLink = $('<a>', {
+        text: filename,
+        download: filename,
+        href: URL.createObjectURL(new Blob([JSON.stringify(trackFile, null, 2)]))
+    });
+
+    const div =  $('#exportedTrackList');
+    div.append(newLink);
+    div.append('<br/>');
 }
