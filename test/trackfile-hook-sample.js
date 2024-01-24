@@ -102,17 +102,82 @@ if(1){
         ])
     ];
 
-    HOOK.removeSlightlyMoveCoords(track);
+    HOOK.sampleByDistance(track);
 
     const Expect1 = [100,101,105];
     const Expect2 = [100,102,104];
 
-    TEST_COMMON.assert(track.lines[0].wayPoints.length == Expect1.length, 'removeSlightlyMoveCoords precheck 1');
-    TEST_COMMON.assert(track.lines[1].wayPoints.length == Expect2.length, 'removeSlightlyMoveCoords precheck 2');
+    TEST_COMMON.assert(track.lines[0].wayPoints.length == Expect1.length, 'sampleByDistance precheck 1');
+    TEST_COMMON.assert(track.lines[1].wayPoints.length == Expect2.length, 'sampleByDistance precheck 2');
 
     for(let i=0;i<Expect1.length;++i)
-        TEST_COMMON.assert(track.lines[0].wayPoints[i].timestamp == Expect1[i], 'removeSlightlyMoveCoords(1) idx='+i);
+        TEST_COMMON.assert(track.lines[0].wayPoints[i].timestamp == Expect1[i], 'sampleByDistance(1) idx='+i);
     for(let i=0;i<Expect2.length;++i)
-        TEST_COMMON.assert(track.lines[1].wayPoints[i].timestamp == Expect2[i], 'removeSlightlyMoveCoords(2) idx='+i);
+        TEST_COMMON.assert(track.lines[1].wayPoints[i].timestamp == Expect2[i], 'sampleByDistance(2) idx='+i);
 }
+
+if(1){
+    const track = new TRACK.TrackFile;
+
+    track.tracks=[
+        new TRACK.Path('P1',[
+            new WP.WayPoint(0,0,100),
+            new WP.WayPoint(0,0,101), // will be dropped
+            new WP.WayPoint(0,0,102),
+            new WP.WayPoint(0,0,103), // will be dropped
+            new WP.WayPoint(0,0,104),
+            new WP.WayPoint(0,0,105), // will be dropped
+            new WP.WayPoint(0,0,106)
+        ]),
+        new TRACK.Path('P2',[
+            new WP.WayPoint(0,0,200),
+            new WP.WayPoint(0,0,201), // will be dropped
+            new WP.WayPoint(0,0,204),
+            new WP.WayPoint(0,0,206),
+            new WP.WayPoint(0,0,207), // will be dropped
+            new WP.WayPoint(0,0,210),
+            new WP.WayPoint(0,0,211) // will be dropped
+        ])
+    ];
+
+    HOOK.sampleByTimeInterval(track);
+
+    const Expect1 = [100,102,104,106];
+    const Expect2 = [200,204,206,210];
+
+    TEST_COMMON.assert(track.tracks[0].wayPoints.length == Expect1.length, 'sampleByTimeInterval precheck 1');
+    TEST_COMMON.assert(track.tracks[1].wayPoints.length == Expect2.length, 'sampleByTimeInterval precheck 2');
+
+    for(let i=0;i<Expect1.length;++i)
+        TEST_COMMON.assert(track.tracks[0].wayPoints[i].timestamp == Expect1[i], 'sampleByTimeInterval(1) idx='+i);
+    for(let i=0;i<Expect2.length;++i)
+        TEST_COMMON.assert(track.tracks[1].wayPoints[i].timestamp == Expect2[i], 'sampleByTimeInterval(2) idx='+i);
+}
+
+if(1){
+    const track = new TRACK.TrackFile;
+
+    track.tracks=[
+        new TRACK.Path('P1',[
+            new WP.WayPoint(0,0,100),
+            new WP.WayPoint(0,0,101), // will be dropped
+            new WP.WayPoint(0,0,102), // will be dropped
+            new WP.WayPoint(0,0,103),
+            new WP.WayPoint(0,0,104), // will be dropped
+            new WP.WayPoint(0,0,105), // will be dropped
+            new WP.WayPoint(0,0,106),
+            new WP.WayPoint(0,0,107), // will be dropped
+            new WP.WayPoint(0,0,108), // will be dropped
+            new WP.WayPoint(0,0,109)
+        ])
+    ];
+
+    HOOK.sampleByIndexInterval(track);
+
+    const Expect = [100,103,106,109];
+    TEST_COMMON.assert(track.tracks[0].wayPoints.length == Expect.length, 'sampleByIndexInterval precheck 1');
+    for(let i=0;i<Expect.length;++i)
+        TEST_COMMON.assert(track.tracks[0].wayPoints[i].timestamp == Expect[i], 'sampleByIndexInterval idx='+i);
+}
+
 console.log('Test passed');

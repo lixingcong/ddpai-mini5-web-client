@@ -5,7 +5,9 @@ export {
     clearInvalidAltitude,
     fixDescription,
     removeAll,
-    removeSlightlyMoveCoords,
+    sampleByDistance,
+    sampleByTimeInterval,
+    sampleByIndexInterval,
     print
 };
 
@@ -15,7 +17,7 @@ export {
 function timeShift(trackFile) {
     const OffsetHour = -4; // 向前调整4小时
     const OffsetSecond = OffsetHour * 3600;
-    const Offset = (wp) => { wp.timestamp += OffsetSecond; }
+    const Offset = (wp) => { if(undefined != wp.timestamp) wp.timestamp += OffsetSecond; }
 
     trackFile.points.forEach((point) => { Offset(point.wayPoint); });
     trackFile.lines.forEach((path) => { path.wayPoints.forEach(Offset); });
@@ -93,10 +95,10 @@ function removeAll(trackFile) {
 }
 
 /**
- * 精简轨迹（按位移阈值对轨迹抽样）
+ * 对轨迹抽样，精简轨迹（按位移阈值）
  * 将位移距离小于10米的点位剔除，只保留位移大于10米的点
  */
-function removeSlightlyMoveCoords(trackFile) {
+function sampleByDistance(trackFile) {
     const MinDistance = 10;
     const Check = (path) => {
         let lastWayPoint = undefined;
@@ -116,6 +118,55 @@ function removeSlightlyMoveCoords(trackFile) {
 
     trackFile.lines.forEach(Check);
     trackFile.tracks.forEach(Check);
+}
+
+/**
+ * 对轨迹抽样，精简轨迹（按固定时间间隔）
+ */
+function sampleByTimeInterval(trackFile) {
+    const Interval = 2; // 每2秒取样
+    const Check = (path) => {
+        let lastWayPoint = undefined;
+        path.wayPoints.forEach((wp, idx, arr) => {
+            if (undefined == lastWayPoint) {
+                  lastWayPoint = wp;
+                return;
+            }
+            if (wp.timestamp - lastWayPoint.timestamp < Interval)
+                arr[idx] = undefined; // remove it
+            else
+                lastWayPoint = wp;
+        });
+
+        path.wayPoints = path.wayPoints.filter(wp => undefined != wp);
+    };
+
+    trackFile.tracks.forEach(Check);
+}
+
+/**
+ * 对轨迹抽样，精简轨迹（按固定间隔点数）
+ */
+function sampleByIndexInterval(trackFile) {
+    const Interval = 3; // 每3个点取样
+    const Check = (path) => {
+        let lastIndex = undefined;
+        path.wayPoints.forEach((wp, idx, arr) => {
+            if (undefined == lastIndex) {
+                  lastIndex = 0;
+                return;
+            }
+            if (idx - lastIndex < Interval)
+                arr[idx] = undefined; // remove it
+            else
+                lastIndex = idx;
+        });
+
+        path.wayPoints = path.wayPoints.filter(wp => undefined != wp);
+    };
+
+    trackFile.tracks.forEach(Check);
+    trackFile.lines.forEach(Check);
 }
 
 /**

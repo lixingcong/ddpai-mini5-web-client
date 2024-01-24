@@ -120,7 +120,7 @@ fs.readFile(args.inputFilePath, 'utf-8', (error, content) =>{
     const trackFile = TRACK.TrackFile.fromKMLDocument(doc);
 
     if(args.removeAltitideCoord)
-        HOOK.removeSlightlyMoveCoords(trackFile);
+        HOOK.clearInvalidAltitude(trackFile);
 
     fs.writeFile(args.outputFilePath, trackFile.toKMLDocument().toFile(args.beautify), (error) => {
         if(error)
