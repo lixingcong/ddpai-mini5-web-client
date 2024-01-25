@@ -69,3 +69,7 @@ summary {
 textarea {
 	width: 100%;
 }
+
+canvas {
+	border: 1px dashed #d3d3d3;
+}

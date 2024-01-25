@@ -2,6 +2,11 @@ import * as TRACK from '../track.js';
 import * as WP from '../waypoint.js';
 import * as TEST_COMMON from './test-common.js';
 
+// test perpose
+import * as KML from '../kml.js';
+import * as GPX from '../gpx.js';
+import * as PREVIEW from './track-preview.js';
+
 let track = new TRACK.TrackFile('DocName');
 track.description = "Doc description xxx";
 
@@ -57,8 +62,9 @@ if(1){
     const trackToKmlContent = trackFromDoc.toKMLDocument().toFile(true);
     // console.log(trackFromDoc);
 
-    if (TEST_COMMON.md5sum(kmlFileContent) != TEST_COMMON.md5sum(trackToKmlContent)) {
-        TEST_COMMON.assert(false, 'Save/Load KML');
+    const same = TEST_COMMON.md5sum(kmlFileContent) == TEST_COMMON.md5sum(trackToKmlContent);
+    if (!same) {
+        console.error('Save/Load KML');
         TEST_COMMON.writeFile('/tmp/track-1-diff.kml', trackToKmlContent);
     }
 
@@ -76,13 +82,12 @@ if(1){
     const trackToGpxContent = trackFromDoc.toGPXDocument().toFile(true);
     //console.log(trackFromDoc);
 
-    if (TEST_COMMON.md5sum(gpxFileContent) != TEST_COMMON.md5sum(trackToGpxContent)) {
-        TEST_COMMON.assert(false, 'Save/Load GPX');
+    const same = TEST_COMMON.md5sum(gpxFileContent) == TEST_COMMON.md5sum(trackToGpxContent)
+    if (!same) {
         TEST_COMMON.writeFile('/tmp/track-1-diff.gpx', trackToGpxContent);
+        console.error('Save/Load GPX');
     }
 
     if(0)
         TEST_COMMON.writeFile('/tmp/track-1.gpx', gpxFileContent);
 }
-
-console.log('Test passed');

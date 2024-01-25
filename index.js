@@ -34,6 +34,8 @@ var tableMulitselStatus = true;
 // params
 const WayPointDescriptionFormat = 'yyyyMMdd hh:mm'; // 描述一个点的注释日期格式
 const HtmlTableFormat = 'MM-dd hh:mm'; // HTML网页中的日期格式
+const TrackPreviewCanvasW=64; // 预览轨迹的画布大小
+const TrackPreviewCanvasH=42;
 
 function isMobileUserAgent() {
 	return /Android|webOS|iPhone|iPad|Mac|Macintosh|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -151,28 +153,78 @@ function exportToTrack(singleFile) {
 
 		const zip = new JSZip();
 
-		function appendTrackResult(trackContent, filename, pointCount, tsFrom, tsTo, trackDistance) {
+		function appendTrackResult(trackContent, filename, tsFrom, tsTo, trackDistance, canvasPoints) {
 			zip.file(filename, trackContent);
 
-			let blob = new Blob([trackContent]);
-			let newLink = $('<a>', {
+			let div = $('<div>',{'class':'btn-container'});
+			const canvasPointLength = canvasPoints.length;
+
+			if(canvasPointLength>0) {
+				const canvas= document.createElement('canvas');
+				const canvasDiv = document.createElement('div');
+
+				canvasDiv.className = 'btn-spacer';
+				canvasDiv.appendChild(canvas);
+
+				const PointRadius = 3;
+				canvas.width = TrackPreviewCanvasW + PointRadius * 2;
+				canvas.height = TrackPreviewCanvasH + PointRadius * 2;
+
+				const ctx = canvas.getContext('2d');
+				ctx.beginPath();
+				ctx.lineWidth=1;
+
+				const pts = canvasPoints.map(p => [p[0]+2, p[1]+2]);
+				const p1 = pts[0];
+				const p2 = pts[canvasPointLength-1];
+				ctx.moveTo(p1[0], p1[1]);
+				for(let i=1;i<canvasPointLength;++i){
+					const p = pts[i];
+					ctx.lineTo(p[0], p[1]);
+				}
+				ctx.stroke();
+
+
+				ctx.beginPath();
+				ctx.arc(p1[0], p1[1], PointRadius, 0, Math.PI * 2);
+				ctx.fillStyle = 'green';
+				ctx.fill();
+
+				ctx.beginPath();
+				ctx.arc(p2[0], p2[1], PointRadius, 0, Math.PI * 2);
+				ctx.fillStyle = 'red';
+				ctx.fill();
+
+				div.append(canvasDiv);
+			}
+
+			let linkDiv = $('<div>',{'class':'btn-spacer'});
+
+			const blob = new Blob([trackContent]);
+			const downloadLink = $('<a>', {
 				text: filename,
 				download: filename,
 				href: URL.createObjectURL(blob)
 			});
+			linkDiv.append(downloadLink);
+			linkDiv.append(', '+UTILS.byteToHumanReadableSize(blob.size));
 
-			exportedTrackList.append(newLink);
-			let trackHint = '<br/>' + UTILS.byteToHumanReadableSize(blob.size) + '，' + pointCount + '点';
+			let trackHint = '';
 			const duration = tsTo - tsFrom;
 			if (duration > 0) {
-				trackHint += '，耗时' + UTILS.secondToHumanReadableString(duration);
+				trackHint += '耗时' + UTILS.secondToHumanReadableString(duration);
 				const wp1 = g_timestampToWayPoints[tsFrom];
 				const wp2 = g_timestampToWayPoints[tsTo];
 				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
 				if(trackDistance > 0)
 					trackHint += '，里程' + UTILS.meterToString(trackDistance);
 			}
-			exportedTrackList.append(trackHint + '<br/>');
+
+			const divHint = $('<div>',{text: trackHint});
+			linkDiv.append(divHint);
+			div.append(linkDiv);
+
+			exportedTrackList.append(div);
 		}
 
 		const fileNameTsFromTo = (a, b) => {
@@ -271,7 +323,7 @@ function exportToTrack(singleFile) {
 			const Filename = fileNameTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
 			trackFile.name = descriptionTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条';
 			const TrackContent = trackFileToContent(trackFile, ExportFormat);
-			appendTrackResult(TrackContent, Filename, timestamps.length, tsFrom, tsTo, 0);
+			appendTrackResult(TrackContent, Filename, tsFrom, tsTo, 0, []);
 			exportedTrackList.append(trackHint);
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
@@ -295,7 +347,7 @@ function exportToTrack(singleFile) {
 				const FileDesciption = descriptionTsFromTo(TsFrom, TsTo);
 				trackFile.name = FileDesciption;
 				const TrackContent = trackFileToContent(trackFile, ExportFormat);
-				appendTrackResult(TrackContent, Filename, WayPoints.length, TsFrom, TsTo, WayDistance);
+				appendTrackResult(TrackContent, Filename, TsFrom, TsTo, WayDistance, WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH));
 			});
 		}
 

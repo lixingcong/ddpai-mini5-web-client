@@ -80,15 +80,17 @@ if(1){
 
 }
 
-const content = document.toFile(true);
-const documentFromContent = KML.Document.fromFile(content);
+if(1){
+    const content = document.toFile(true);
+    const documentFromContent = KML.Document.fromFile(content);
 
-if(TEST_COMMON.isObjectEqual(document, documentFromContent)){
-    console.log('KML.Document.fromFile() ====== KML.Document.toFile()')
-}else{
-    console.warn('KML.Document.fromFile() != KML.Document.toFile()');
-    //process.exit(-1);
-    TEST_COMMON.writeFile('/tmp/kml2-different.kml', documentFromContent.toFile(true));
+    if(TEST_COMMON.isObjectEqual(document, documentFromContent)){
+        console.log('KML.Document.fromFile() ====== KML.Document.toFile()')
+    }else{
+        console.warn('KML.Document.fromFile() != KML.Document.toFile()');
+        //process.exit(-1);
+        TEST_COMMON.writeFile('/tmp/kml2-different.kml', documentFromContent.toFile(true));
+    }
+
+    TEST_COMMON.writeFile('/tmp/kml2.kml', content);
 }
-
-TEST_COMMON.writeFile('/tmp/kml2.kml', content);
