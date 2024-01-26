@@ -153,18 +153,48 @@ function exportToTrack(singleFile) {
 
 		const zip = new JSZip();
 
-		function appendTrackResult(trackContent, filename, tsFrom, tsTo, trackDistance, canvasPoints) {
+		const newTrackResultDiv = () => $('<div>',{'class':'btn-container'});
+
+		const newDownloadLinkDiv = (trackContent, filename) => {
 			zip.file(filename, trackContent);
 
-			let div = $('<div>',{'class':'btn-container'});
+			let div = $('<div>',{class:'btn-spacer'});
+			const blob = new Blob([trackContent]);
+			const downloadLink = $('<a>', {
+				text: filename,
+				download: filename,
+				href: URL.createObjectURL(blob)
+			});
+			div.append(downloadLink);
+			div.append(', '+UTILS.byteToHumanReadableSize(blob.size));
+
+			return div;
+		}
+
+		const newTrackHintDiv = (prefix, tsFrom, tsTo, trackDistance, addToClass) => {
+			let trackHint = prefix;
+			const duration = tsTo - tsFrom;
+			if (duration > 0) {
+				trackHint += '耗时' + UTILS.secondToHumanReadableString(duration);
+				const wp1 = g_timestampToWayPoints[tsFrom];
+				const wp2 = g_timestampToWayPoints[tsTo];
+				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
+				if(trackDistance > 0)
+					trackHint += '，里程' + UTILS.meterToString(trackDistance);
+			}
+
+			return $('<div>', { text: trackHint, class: addToClass ? 'btn-spacer' : undefined });
+		}
+
+		const newTrackCanvasDiv = canvasPoints => {
 			const canvasPointLength = canvasPoints.length;
 
 			if(canvasPointLength>0) {
 				const canvas= document.createElement('canvas');
-				const canvasDiv = document.createElement('div');
+				const div = document.createElement('div');
 
-				canvasDiv.className = 'btn-spacer';
-				canvasDiv.appendChild(canvas);
+				div.className = 'btn-spacer';
+				div.appendChild(canvas);
 
 				const PointRadius = 3;
 				canvas.width = TrackPreviewCanvasW + PointRadius * 2;
@@ -173,6 +203,7 @@ function exportToTrack(singleFile) {
 				const ctx = canvas.getContext('2d');
 				ctx.beginPath();
 				ctx.lineWidth=1;
+				ctx.strokeStyle = 'black';
 
 				const pts = canvasPoints.map(p => [p[0]+2, p[1]+2]);
 				const p1 = pts[0];
@@ -187,44 +218,18 @@ function exportToTrack(singleFile) {
 
 				ctx.beginPath();
 				ctx.arc(p1[0], p1[1], PointRadius, 0, Math.PI * 2);
-				ctx.fillStyle = 'green';
+				ctx.fillStyle = '#02f21a';
 				ctx.fill();
 
 				ctx.beginPath();
 				ctx.arc(p2[0], p2[1], PointRadius, 0, Math.PI * 2);
-				ctx.fillStyle = 'red';
+				ctx.fillStyle = '#fa5e37';
 				ctx.fill();
 
-				div.append(canvasDiv);
+				return div;
 			}
 
-			let linkDiv = $('<div>',{'class':'btn-spacer'});
-
-			const blob = new Blob([trackContent]);
-			const downloadLink = $('<a>', {
-				text: filename,
-				download: filename,
-				href: URL.createObjectURL(blob)
-			});
-			linkDiv.append(downloadLink);
-			linkDiv.append(', '+UTILS.byteToHumanReadableSize(blob.size));
-
-			let trackHint = '';
-			const duration = tsTo - tsFrom;
-			if (duration > 0) {
-				trackHint += '耗时' + UTILS.secondToHumanReadableString(duration);
-				const wp1 = g_timestampToWayPoints[tsFrom];
-				const wp2 = g_timestampToWayPoints[tsTo];
-				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
-				if(trackDistance > 0)
-					trackHint += '，里程' + UTILS.meterToString(trackDistance);
-			}
-
-			const divHint = $('<div>',{text: trackHint});
-			linkDiv.append(divHint);
-			div.append(linkDiv);
-
-			exportedTrackList.append(div);
+			return undefined;
 		}
 
 		const fileNameTsFromTo = (a, b) => {
@@ -292,15 +297,17 @@ function exportToTrack(singleFile) {
 			return undefined;
 		}
 
-		let tsFrom = Number.MAX_SAFE_INTEGER;
-		let tsTo = Number.MIN_SAFE_INTEGER;
+		let g_tsFrom = Number.MAX_SAFE_INTEGER;
+		let g_tsTo = Number.MIN_SAFE_INTEGER;
 
 		if (singleFile) {
 			// singleFile = true表示单个文件，内含N条轨迹
-			let trackHint = '';
+
 
 			const ZeroPadLength = UTILS.intWidth(timestampsGrouped.length);
 			const trackFile = new TRACK.TrackFile;
+			let divRoots=[];
+
 			timestampsGrouped.forEach((timestamps, idx) => {
 				const WayPoints = timestamps.map(ts => g_timestampToWayPoints[ts]);
 				const WayDistance = WP.wayDistance(WayPoints);
@@ -308,23 +315,26 @@ function exportToTrack(singleFile) {
 				const WayPointTo = WayPoints[WayPoints.length-1];
 				const ReadableIdx = UTILS.zeroPad(idx + 1, ZeroPadLength); // 2 -> '00000000002'
 
-				trackHint += '轨迹' + ReadableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp) + '，' + UTILS.secondToHumanReadableString(WayPointTo.timestamp - WayPointFrom.timestamp);
-				trackHint += '，直线' + UTILS.meterToString(WayPointFrom.distanceTo(WayPointTo));
-				trackHint += '，里程' + UTILS.meterToString(WayDistance) + '<br>';
+				const HintPrefix = '轨迹' + ReadableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp)+ '，';
+
+				const divRoot = newTrackResultDiv();
+				divRoot.append(newTrackCanvasDiv(WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH)));
+				divRoot.append(newTrackHintDiv(HintPrefix, WayPointFrom.timestamp, WayPointTo.timestamp, WayDistance, true));
+				divRoots.push(divRoot);
 
 				appendWayPointsToTrackFile(trackFile, WayPoints, WayPointFrom, WayPointTo, WayDistance, ReadableIdx);
 
-				if (tsFrom > WayPointFrom.timestamp)
-					tsFrom = WayPointFrom.timestamp;
-				if (tsTo < WayPointTo.timestamp)
-					tsTo = WayPointTo.timestamp;
+				if (g_tsFrom > WayPointFrom.timestamp)
+					g_tsFrom = WayPointFrom.timestamp;
+				if (g_tsTo < WayPointTo.timestamp)
+					g_tsTo = WayPointTo.timestamp;
 			});
 
-			const Filename = fileNameTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
-			trackFile.name = descriptionTsFromTo(tsFrom, tsTo) + '共' + timestampsGrouped.length + '条';
+			const Filename = fileNameTsFromTo(g_tsFrom, g_tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
+			trackFile.name = descriptionTsFromTo(g_tsFrom, g_tsTo) + '共' + timestampsGrouped.length + '条';
 			const TrackContent = trackFileToContent(trackFile, ExportFormat);
-			appendTrackResult(TrackContent, Filename, tsFrom, tsTo, 0, []);
-			exportedTrackList.append(trackHint);
+			exportedTrackList.append(newDownloadLinkDiv(TrackContent, Filename));
+			divRoots.forEach(d => {exportedTrackList.append(d);});
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
 			timestampsGrouped.forEach(timestamps => {
@@ -333,10 +343,10 @@ function exportToTrack(singleFile) {
 				const WayPointFrom = WayPoints[0];
 				const WayPointTo = WayPoints[WayPoints.length-1];
 
-				if (tsFrom > WayPointFrom.timestamp)
-					tsFrom = WayPointFrom.timestamp;
-				if (tsTo < WayPointTo.timestamp)
-					tsTo = WayPointTo.timestamp;
+				if (g_tsFrom > WayPointFrom.timestamp)
+					g_tsFrom = WayPointFrom.timestamp;
+				if (g_tsTo < WayPointTo.timestamp)
+					g_tsTo = WayPointTo.timestamp;
 
 				let trackFile = new TRACK.TrackFile;
 				appendWayPointsToTrackFile(trackFile, WayPoints, WayPointFrom, WayPointTo, WayDistance, undefined)
@@ -347,7 +357,13 @@ function exportToTrack(singleFile) {
 				const FileDesciption = descriptionTsFromTo(TsFrom, TsTo);
 				trackFile.name = FileDesciption;
 				const TrackContent = trackFileToContent(trackFile, ExportFormat);
-				appendTrackResult(TrackContent, Filename, TsFrom, TsTo, WayDistance, WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH));
+
+				const divRoot = newTrackResultDiv();
+				const divLink = newDownloadLinkDiv(TrackContent, Filename);
+				divLink.append(newTrackHintDiv('', TsFrom, TsTo, WayDistance, false));
+				divRoot.append(newTrackCanvasDiv(WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH)));
+				divRoot.append(divLink);
+				exportedTrackList.append(divRoot);
 			});
 		}
 
@@ -361,7 +377,7 @@ function exportToTrack(singleFile) {
 				mimeType: 'application/zip'
 			});
 
-			let filename = '轨迹合辑_'+fileNameTsFromTo(tsFrom,tsTo)+'.zip';
+			let filename = '轨迹合辑_'+fileNameTsFromTo(g_tsFrom,g_tsTo)+'.zip';
 			let newLink = $('<a>', {
 				text: filename,
 				download: filename,
