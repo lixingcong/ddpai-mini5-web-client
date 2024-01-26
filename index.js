@@ -6,6 +6,7 @@ import * as TRACK from './track.js';
 import * as DF from './date-format.js';
 import * as UTILS from './utils.js';
 import * as WP from './waypoint.js';
+import * as TL from './track-links.js';
 
 // export to global window scope
 window.exportToTrack = exportToTrack;
@@ -34,8 +35,6 @@ var tableMulitselStatus = true;
 // params
 const WayPointDescriptionFormat = 'yyyyMMdd hh:mm'; // 描述一个点的注释日期格式
 const HtmlTableFormat = 'MM-dd hh:mm'; // HTML网页中的日期格式
-const TrackPreviewCanvasW=64; // 预览轨迹的画布大小
-const TrackPreviewCanvasH=42;
 
 function isMobileUserAgent() {
 	return /Android|webOS|iPhone|iPad|Mac|Macintosh|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -153,85 +152,6 @@ function exportToTrack(singleFile) {
 
 		const zip = new JSZip();
 
-		const newTrackResultDiv = () => $('<div>',{'class':'btn-container'});
-
-		const newDownloadLinkDiv = (trackContent, filename) => {
-			zip.file(filename, trackContent);
-
-			let div = $('<div>',{class:'btn-spacer'});
-			const blob = new Blob([trackContent]);
-			const downloadLink = $('<a>', {
-				text: filename,
-				download: filename,
-				href: URL.createObjectURL(blob)
-			});
-			div.append(downloadLink);
-			div.append(', '+UTILS.byteToHumanReadableSize(blob.size));
-
-			return div;
-		}
-
-		const newTrackHintDiv = (prefix, tsFrom, tsTo, trackDistance, addToClass) => {
-			let trackHint = prefix;
-			const duration = tsTo - tsFrom;
-			if (duration > 0) {
-				trackHint += '耗时' + UTILS.secondToHumanReadableString(duration);
-				const wp1 = g_timestampToWayPoints[tsFrom];
-				const wp2 = g_timestampToWayPoints[tsTo];
-				trackHint += '，直线' + UTILS.meterToString(wp1.distanceTo(wp2));
-				if(trackDistance > 0)
-					trackHint += '，里程' + UTILS.meterToString(trackDistance);
-			}
-
-			return $('<div>', { text: trackHint, class: addToClass ? 'btn-spacer' : undefined });
-		}
-
-		const newTrackCanvasDiv = canvasPoints => {
-			const canvasPointLength = canvasPoints.length;
-
-			if(canvasPointLength>0) {
-				const canvas= document.createElement('canvas');
-				const div = document.createElement('div');
-
-				div.className = 'btn-spacer';
-				div.appendChild(canvas);
-
-				const PointRadius = 3;
-				canvas.width = TrackPreviewCanvasW + PointRadius * 2;
-				canvas.height = TrackPreviewCanvasH + PointRadius * 2;
-
-				const ctx = canvas.getContext('2d');
-				ctx.beginPath();
-				ctx.lineWidth=1;
-				ctx.strokeStyle = 'black';
-
-				const pts = canvasPoints.map(p => [p[0]+2, p[1]+2]);
-				const p1 = pts[0];
-				const p2 = pts[canvasPointLength-1];
-				ctx.moveTo(p1[0], p1[1]);
-				for(let i=1;i<canvasPointLength;++i){
-					const p = pts[i];
-					ctx.lineTo(p[0], p[1]);
-				}
-				ctx.stroke();
-
-
-				ctx.beginPath();
-				ctx.arc(p1[0], p1[1], PointRadius, 0, Math.PI * 2);
-				ctx.fillStyle = '#02f21a';
-				ctx.fill();
-
-				ctx.beginPath();
-				ctx.arc(p2[0], p2[1], PointRadius, 0, Math.PI * 2);
-				ctx.fillStyle = '#fa5e37';
-				ctx.fill();
-
-				return div;
-			}
-
-			return undefined;
-		}
-
 		const fileNameTsFromTo = (a, b) => {
 			const TrackFileNameFormat = 'yyyyMMdd-hhmm'; // 文件名日期格式，不能含特殊字符，如冒号
 			const from = DF.timestampToString(a, TrackFileNameFormat, false);
@@ -317,9 +237,11 @@ function exportToTrack(singleFile) {
 
 				const HintPrefix = '轨迹' + ReadableIdx + '，' + simpleTimestampToString(WayPointFrom.timestamp, WayPointTo.timestamp)+ '，';
 
-				const divRoot = newTrackResultDiv();
-				divRoot.append(newTrackCanvasDiv(WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH)));
-				divRoot.append(newTrackHintDiv(HintPrefix, WayPointFrom.timestamp, WayPointTo.timestamp, WayDistance, true));
+				const divRoot = TL.newRootDiv();
+				const paths = [new TRACK.Path(undefined, WayPoints)];
+				const paintPoints = TRACK.paint(paths, TL.CanvasDefaultWidth, TL.CanvasDefaultHeight).points;
+				divRoot.append(TL.newCanvasDiv(paintPoints, true, TL.CanvasDefaultWidth, TL.CanvasDefaultHeight));
+				divRoot.append(TL.newHintDiv(HintPrefix, WayPointFrom, WayPointTo, WayDistance, true));
 				divRoots.push(divRoot);
 
 				appendWayPointsToTrackFile(trackFile, WayPoints, WayPointFrom, WayPointTo, WayDistance, ReadableIdx);
@@ -333,8 +255,9 @@ function exportToTrack(singleFile) {
 			const Filename = fileNameTsFromTo(g_tsFrom, g_tsTo) + '共' + timestampsGrouped.length + '条.' + ExportFormat;
 			trackFile.name = descriptionTsFromTo(g_tsFrom, g_tsTo) + '共' + timestampsGrouped.length + '条';
 			const TrackContent = trackFileToContent(trackFile, ExportFormat);
-			exportedTrackList.append(newDownloadLinkDiv(TrackContent, Filename));
+			exportedTrackList.append(TL.newDownloadLinkDiv(new Blob([TrackContent]), Filename));
 			divRoots.forEach(d => {exportedTrackList.append(d);});
+			zip.file(Filename, TrackContent);
 		} else {
 			// singleFile = false表示每个文件只含1条轨迹
 			timestampsGrouped.forEach(timestamps => {
@@ -358,12 +281,17 @@ function exportToTrack(singleFile) {
 				trackFile.name = FileDesciption;
 				const TrackContent = trackFileToContent(trackFile, ExportFormat);
 
-				const divRoot = newTrackResultDiv();
-				const divLink = newDownloadLinkDiv(TrackContent, Filename);
-				divLink.append(newTrackHintDiv('', TsFrom, TsTo, WayDistance, false));
-				divRoot.append(newTrackCanvasDiv(WP.paint(WayPoints, TrackPreviewCanvasW, TrackPreviewCanvasH)));
+				const divRoot = TL.newRootDiv();
+				const divLink = TL.newDownloadLinkDiv(new Blob([TrackContent]), Filename);
+				divLink.append(TL.newHintDiv('', WayPointFrom, WayPointTo, WayDistance, false));
+
+				const paths = trackFile.lines.concat(trackFile.tracks);
+				const paintPoints = TRACK.paint(paths, TL.CanvasDefaultWidth, TL.CanvasDefaultHeight).points;
+				divRoot.append(TL.newCanvasDiv(paintPoints, true, TL.CanvasDefaultWidth, TL.CanvasDefaultHeight));
 				divRoot.append(divLink);
+
 				exportedTrackList.append(divRoot);
+				zip.file(Filename, TrackContent);
 			});
 		}
 
@@ -377,14 +305,9 @@ function exportToTrack(singleFile) {
 				mimeType: 'application/zip'
 			});
 
-			let filename = '轨迹合辑_'+fileNameTsFromTo(g_tsFrom,g_tsTo)+'.zip';
-			let newLink = $('<a>', {
-				text: filename,
-				download: filename,
-				href: URL.createObjectURL(zipBlob)
-			});
-			exportedTrackList.prepend(', ' + UTILS.byteToHumanReadableSize(zipBlob.size)+'<br/>');
-			exportedTrackList.prepend(newLink);
+			const divRoot = TL.newRootDiv();
+			divRoot.append(TL.newDownloadLinkDiv(zipBlob, '轨迹合辑_'+fileNameTsFromTo(g_tsFrom,g_tsTo)+'.zip'));
+			exportedTrackList.prepend(divRoot);
 		}
 	} else {
 		exportedTrackList.append($('<a>', {

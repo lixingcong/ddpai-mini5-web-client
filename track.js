@@ -3,7 +3,11 @@
 export {
     Point,
     Path,
-    TrackFile
+    TrackFile,
+    PaintPoint,
+    PaintCmd,
+    PaintResult,
+    paint
 };
 
 import * as KML from './kml.js';
@@ -206,4 +210,178 @@ class TrackFile
         });
         return ret;
     }
+}
+
+class Rect
+{
+    constructor(x1,y1,x2,y2)
+    {
+        this.topLeftX = undefined == x1 ? Number.MAX_SAFE_INTEGER : x1;
+        this.topLeftY = undefined == y1 ? Number.MAX_SAFE_INTEGER : y1;
+        this.bottomRightX = undefined == x2 ? Number.MIN_SAFE_INTEGER : x2;
+        this.bottomRightY = undefined == y2 ? Number.MIN_SAFE_INTEGER : y2;
+    }
+
+    isValid()
+    {
+        return undefined!=this.topLeftX && undefined!=this.topLeftY && undefined!=this.bottomRightX && undefined!=this.bottomRightY;
+    }
+
+    center()
+    {
+        return [(this.topLeftX+this.bottomRightX )/2, (this.topLeftY+this.bottomRightY)/2];
+    }
+
+    width() {
+        return Math.abs(this.bottomRightX - this.topLeftX);
+    }
+
+    height(){
+        return Math.abs(this.bottomRightY - this.topLeftY);
+    }
+
+    scale(f)
+    {
+        this.topLeftX *= f;
+        this.topLeftY *= f;
+        this.bottomRightX *= f;
+        this.bottomRightY *= f;
+    }
+
+    merge(other)
+    {
+        this.topLeftX = Math.min(this.topLeftX, other.topLeftX);
+        this.topLeftY = Math.min(this.topLeftY, other.topLeftY);
+        this.bottomRightX = Math.max(this.bottomRightX, other.bottomRightX);
+        this.bottomRightY = Math.max(this.bottomRightY, other.bottomRightY);
+    }
+
+    static fromPoints(xyArray)
+    {
+        const MaxMinValue = arr => [Math.max.apply(null, arr), Math.min.apply(null, arr) ];
+
+        const X = MaxMinValue(xyArray.map(a => a[0]));
+        const Y = MaxMinValue(xyArray.map(a => a[1]));
+
+        return new Rect(X[1],Y[1],X[0],Y[0]);
+    }
+}
+
+const PaintCmd = {
+    TrackStart:0,
+    TrackPoint:1,
+    TrackEnd:2
+};
+
+class PaintPoint {
+    constructor(x, y, cmd) {
+        this.x = x;
+        this.y = y;
+        this.cmd = cmd; // PaintCmd
+    }
+}
+
+class PaintResult {
+    constructor(paintPoints, horizontalDistance, verticalDistance)
+    {
+        this.points = paintPoints;
+        this.horizontalDistance = horizontalDistance;
+        this.verticalDistance = verticalDistance;
+    }
+}
+
+// 简单比较两数是否相等
+const fuzzyCompare = (a,b) => Math.abs(a-b) < 0.01;
+
+/**
+ * 将多个轨迹打印到长宽(像素)的图片上
+ *
+ * @param {array} paths 多个路径，Path对象数组
+ * @param {int} width 图片长度
+ * @param {int} height 图片高度
+ * @return {PaintResult}
+ */
+function paint(paths, width, height) {
+    if(!width || !height)
+        return undefined; // invalid
+
+    let rect = new Rect();
+    let XY = [];
+
+    paths.forEach(path => {
+        let xy = path.wayPoints.map(wp => wp.toXY());
+        xy = xy.map(p => [p[0], -p[1]]); // 反转Y（屏幕坐标系Y方向不一致）
+        XY.push(xy);
+        rect.merge(Rect.fromPoints(xy));
+    });
+
+    if(!rect.isValid())
+        return undefined; // invalid
+
+    let RWidth = rect.width();
+    let RHeight = rect.height();
+
+    const RWidthFact=RWidth; // 实际轨迹边框尺寸
+    const RHeightFact=RHeight;
+
+    let ret = new PaintResult([], 0, 0);
+
+    {
+        // 将源点位平移到中点，然后归一化到[-0.5,0.5]
+        const center = rect.center();
+        XY = XY.map(xy =>
+            xy.map(p => [
+                (p[0] - center[0]) / RWidth,
+                (p[1] - center[1]) / RHeight
+            ])
+        );
+    }
+
+    // 缩放rect直至适合窗口大小
+    do {
+        let changed = true;
+        if (RWidth > width)
+            rect.scale(width / RWidth);
+        else if (RHeight > height)
+            rect.scale(height / RHeight);
+        else
+            changed = false;
+
+        if (changed) {
+            RWidth = rect.width();
+            RHeight = rect.height();
+        } else
+            break; // finish
+    } while (1);
+
+    //console.log('scale bounding rect to w=' + BWidth + ', h=' + BHeight);
+
+    if(fuzzyCompare(RWidth, width)){
+        ret.horizontalDistance=RWidthFact;
+        ret.verticalDistance=RWidthFact*(height/width);
+    }else{
+        ret.verticalDistance=RHeightFact;
+        ret.horizontalDistance=RHeightFact*(width/height);
+    }
+
+    const PicCenterX = width / 2;
+    const PicCenterY = height / 2;
+
+    XY.forEach(xy => {
+        const paintPoints = xy.map(p => new PaintPoint(
+            p[0] * RWidth + PicCenterX,
+            p[1] * RHeight + PicCenterY,
+            PaintCmd.TrackPoint
+        ));
+
+        const p1=paintPoints[0];
+        const p2=paintPoints[paintPoints.length-1];
+
+        p1.cmd=PaintCmd.TrackStart;
+        p2.cmd=PaintCmd.TrackEnd;
+
+        ret.points = ret.points.concat(paintPoints);
+    });
+
+    return ret;
 }

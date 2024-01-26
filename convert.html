@@ -36,7 +36,13 @@
 				<label><input type="checkbox" id="enable-export-beautify"></input>美化缩进</label>
 				<span class="help-tip"><p>缩进：插入空白进行缩进对齐，牺牲文件尺寸，改善XML文件的可读性</p></span>
 				<label><input type="checkbox" id="force-convert-same-fmt"></input>若格式相同也转换</label>
-				<span class="help-tip"><p>若输入文件格式与输出一致，如kml转kml，也进行强制转换</p></span>
+				<span class="help-tip"><p>若输入文件格式与输出一致，如kml转kml，也进行强制转换。若不设置强制转换，则对源文件不做任何修改</p></span>
+			</div>
+			<div class="btn-container">
+				<label>小地图长度</label>
+				<input type="number" id="canvas-width" min="40" max="1600" value="100" />
+				<label>高度</label>
+				<input type="number" id="canvas-height" min="40" max="900" value="70" />
 			</div>
 			<div class="btn-container">
 				<label><input type="checkbox" id="use-trackfile-hook"></input>对TrackFile进行后处理</label>
@@ -62,7 +68,6 @@ function(trackFile){
 			<progress id="progressBar" value="-1"></progress>
 		</div>
 		<div id="exportedTrackList"></div>
-		<div id="individualTrackList"></div>
 		<div id="infoList"></div>
 		<div id="errorList">
 			<div id="errorListHeader" style="display: none;">

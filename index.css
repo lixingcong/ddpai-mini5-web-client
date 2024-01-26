@@ -72,4 +72,5 @@ textarea {
 
 canvas {
 	background: #c9cfcf;
+	border: 1px solid black;
 }

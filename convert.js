@@ -5,6 +5,8 @@ import * as TRACK from './track.js'
 import * as KML from './kml.js';
 import * as GPX from './gpx.js';
 import * as UTILS from './utils.js';
+import * as TL from './track-links.js';
+// import * as WP from './waypoint.js';
 
 window.list_all_files=list_all_files;
 
@@ -15,6 +17,8 @@ var g_enableBeautify = false; // 是否启用美化
 var g_forceConvert = false; // 是否强制转相同格式
 var g_trackFileHookScript = undefined;
 var g_useTrackFileHook = false;
+var g_canvasWidth = TL.CanvasDefaultWidth;
+var g_canvasHeight = TL.CanvasDefaultHeight;
 
 class MyFile
 {
@@ -23,22 +27,13 @@ class MyFile
         this.name = name;
         this.content = undefined;
         this.keepSameFormat = false; // 当目标格式与源格式相同时，保持原样，无需转换
+        this.trackFile = undefined;
     }
 }
 
 const appendFile = myFile => {
     g_files.push(myFile);
     setProgress(g_files.length / g_fileCount); // 始终达不到100%，最后需要压缩表示100
-}
-
-function appendBlobToHtml(dom, blob, filename) {
-    const newLink = $('<a>', {
-        text: filename,
-        download: filename,
-        href: URL.createObjectURL(blob)
-    });
-    dom.append(newLink);
-    dom.append(', '+UTILS.byteToHumanReadableSize(blob.size) + '<br/>');
 }
 
 $('#convert').click(function () {
@@ -61,14 +56,14 @@ $('#convert').click(function () {
     const exportedTrackList = $('#exportedTrackList');
     exportedTrackList.empty();
 
-    $('#individualTrackList').empty();
-
     const infoList=$('#infoList')
     infoList.empty();
 
     g_enableBeautify = $('#enable-export-beautify').prop('checked');
     g_forceConvert = $('#force-convert-same-fmt').prop('checked');
     g_useTrackFileHook = $('#use-trackfile-hook').prop('checked');
+    g_canvasWidth = parseInt($('#canvas-width').val());
+    g_canvasHeight = parseInt($('#canvas-height').val());
     const DestFileFormat = $('select#select-convert-format').find(":selected").val();
 
     // Remove custom hook
@@ -132,8 +127,14 @@ $('#convert').click(function () {
                 mimeType: 'application/zip'
             });
 
-            appendBlobToHtml(exportedTrackList, zipBlob, zipHint+'.zip');
-            exportedTrackList.append('<button id="list-all-files" onclick="list_all_files(this)">预览压缩包</button>');
+            exportedTrackList.append(TL.newDownloadLinkDiv(zipBlob, zipHint+'.zip'));
+
+            const divPreview = $('<div>');
+            divPreview.append($('<button>', {
+                text: '预览压缩包',
+                onclick: 'list_all_files(this)'
+            }));
+            exportedTrackList.append(divPreview);
         } else {
             exportedTrackList.append($('<a>', {
                 text: 'Zip文件内容为空白',
@@ -189,12 +190,29 @@ function setProgress(value) {
 	}
 }
 
-function list_all_files(dom)
+function list_all_files(btn)
 {
-    dom.remove();
-    const LinksDiv=$('#individualTrackList');
-    LinksDiv.append('压缩包内容：<br/>')
-    g_files.forEach((myFile) => { appendBlobToHtml(LinksDiv, new Blob([myFile.content]), myFile.name); });
+    btn.remove();
+    const exportedTrackList=$('#exportedTrackList');
+
+    g_files.forEach((myFile) => {
+        const divRoot = TL.newRootDiv();
+        exportedTrackList.append(divRoot);
+
+        const paths = myFile.trackFile.lines.concat(myFile.trackFile.tracks);
+        const paintResult = TRACK.paint(paths, g_canvasWidth, g_canvasHeight);
+        divRoot.append(TL.newCanvasDiv(paintResult.points, true, g_canvasWidth, g_canvasHeight));
+
+        const divLink=TL.newDownloadLinkDiv(new Blob([myFile.content]), myFile.name);
+        divLink.append($('<div>', {
+            text: '点位' + myFile.trackFile.points.length + '，路径' + myFile.trackFile.lines.length +
+             '，轨迹' + myFile.trackFile.tracks.length + (myFile.keepSameFormat?'，未转换':'')
+        }));
+        divLink.append($('<div>', {
+            text: '比例尺：' + UTILS.meterToString(paintResult.horizontalDistance)+'×'+UTILS.meterToString(paintResult.verticalDistance)
+        }))
+        divRoot.append(divLink);
+    });
 }
 
 loadArchiveFormats(['zip'], function () {
@@ -233,6 +251,27 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
     const srcRawName = srcName.substring(0, srcRawNameLength);
     myFile.name=srcRawName+destFormat;
 
+    switch(srcExtName){
+        case 'kml':
+            const kmlDoc = KML.Document.fromFile(myFile.content);
+            if(kmlDoc)
+                myFile.trackFile=TRACK.TrackFile.fromKMLDocument(kmlDoc);
+            break;
+        case 'gpx':
+            const gpxDoc = GPX.Document.fromFile(myFile.content);
+            if(gpxDoc)
+                myFile.trackFile=TRACK.TrackFile.fromGPXDocument(gpxDoc);
+            break;
+        default:
+            reject(new Error('Unsupport file extension: ' + srcExtName + ' of ' + srcName));
+            return;
+    }
+
+    if(undefined==myFile.trackFile){
+        reject(new Error('Failed to build TrackFile object: ' + srcName));
+        return;
+    }
+
     // skip if has same format
     if(false == g_forceConvert && srcExtName == destFormat){
         myFile.keepSameFormat = true;
@@ -240,37 +279,15 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
         return; // No need for convert
     }
 
-    let trackFile = undefined;
-    switch(srcExtName){
-        case 'kml':
-            const kmlDoc = KML.Document.fromFile(myFile.content);
-            if(kmlDoc)
-                trackFile=TRACK.TrackFile.fromKMLDocument(kmlDoc);
-            break;
-        case 'gpx':
-            const gpxDoc = GPX.Document.fromFile(myFile.content);
-            if(gpxDoc)
-                trackFile=TRACK.TrackFile.fromGPXDocument(gpxDoc);
-            break;
-        default:
-            reject(new Error('Unsupport file extension: ' + srcExtName + ' of ' + srcName));
-            return;
-    }
-
-    if(undefined==trackFile){
-        reject(new Error('Failed to build TrackFile object: ' + srcName));
-        return;
-    }
-
     if(g_useTrackFileHook && window.trackFileHook)
-        window.trackFileHook(trackFile);
+        window.trackFileHook(myFile.trackFile);
 
     switch(destFormat){
         case 'kml':
-            myFile.content = trackFile.toKMLDocument().toFile(g_enableBeautify);
+            myFile.content = myFile.trackFile.toKMLDocument().toFile(g_enableBeautify);
             break;
         case 'gpx':
-            myFile.content = trackFile.toGPXDocument().toFile(g_enableBeautify);
+            myFile.content = myFile.trackFile.toGPXDocument().toFile(g_enableBeautify);
             break;
         default:
             reject(new Error('Unsupport dest format: ' + destFormat));

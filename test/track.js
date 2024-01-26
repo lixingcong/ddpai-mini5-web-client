@@ -5,7 +5,6 @@ import * as TEST_COMMON from './test-common.js';
 // test perpose
 import * as KML from '../kml.js';
 import * as GPX from '../gpx.js';
-import * as PREVIEW from './track-preview.js';
 
 let track = new TRACK.TrackFile('DocName');
 track.description = "Doc description xxx";
