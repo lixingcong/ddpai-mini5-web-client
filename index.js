@@ -317,7 +317,7 @@ function exportToTrack(singleFile) {
 		exportedTrackList.append('<br/>');
 	}
 
-	infoList.append('导出轨迹完成，耗时 ' + (DF.now() - costTimestampBegin) + 'ms');
+	infoList.append('导出轨迹完成，耗时 ' + UTILS.millisecondToHumanReadableString(DF.now() - costTimestampBegin));
 }
 
 // ---- promise 1 ----
@@ -558,7 +558,7 @@ function clearErrors() {
 }
 
 function refreshDownloadProgress(costTime = -1) {
-	const finshedText = (costTime >= 0 ? '，已下载完毕（耗时' + costTime + 'ms）' : '');
+	const finshedText = (costTime >= 0 ? '，已下载完毕（耗时' + UTILS.millisecondToHumanReadableString(costTime) + '）' : '');
 	const pointTitle = (costTime >= 0 ? '原始点位数：' : '预处理：');
 	const pointCount = (costTime >= 0 ? Object.keys(g_timestampToWayPoints).length : Object.keys(g_gpxPreprocessContents).length);
 	$('#infoList').html(pointTitle + pointCount + finshedText + '<br/>');

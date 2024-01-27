@@ -5,6 +5,7 @@ export {
     intWidth,
     scaleToIndex,
     secondToHumanReadableString,
+    millisecondToHumanReadableString,
     byteToHumanReadableSize,
     isObjectEmpty,
     zeroPad,
@@ -60,6 +61,12 @@ function secondToHumanReadableString(second) {
 	if (second < 86400)
 		return (second / 3600).toFixed(1) + 'h';
 	return (second / 86400).toFixed(1) + 'd';
+}
+
+function millisecondToHumanReadableString(ms) {
+    if (ms < 1000)
+        return ms + 'ms';
+    return secondToHumanReadableString(parseFloat((ms / 1000).toFixed(1)));
 }
 
 // 字节转为'KB'或者'MB'

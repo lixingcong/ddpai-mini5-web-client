@@ -99,6 +99,7 @@ $('#convert').click(function () {
 		});
 
         g_files = g_files.filter(myFile => { return myFile && undefined != myFile.content; });
+        g_files.sort((a, b) => a.name.localeCompare(b.name)); // 按文件名排序
 
         let stat = {
             converted: 0,
@@ -145,7 +146,7 @@ $('#convert').click(function () {
 
 		setProgress(1);
 
-        infoList.append('源数目: '+g_fileCount+', 已转换: '+stat.converted+ ', 无需转换: '+  stat.same + '<br/>耗时'+ (DF.now() - costTimestampBegin) + 'ms');
+        infoList.append('源数目: '+g_fileCount+', 已转换: '+stat.converted+ ', 无需转换: '+  stat.same + '<br/>耗时'+ UTILS.millisecondToHumanReadableString(DF.now() - costTimestampBegin));
 	});
 });
 
