@@ -285,8 +285,11 @@ class PaintResult {
     constructor(paintPoints, horizontalDistance, verticalDistance)
     {
         this.points = paintPoints;
-        this.horizontalDistance = horizontalDistance;
+        this.horizontalDistance = horizontalDistance; // 画布的实际距离（米）
         this.verticalDistance = verticalDistance;
+
+        this.topLeft = undefined; // PaintPoint对象，指示这些点位构成的Rect左上角
+        this.bottomRight = undefined;
     }
 }
 
@@ -340,7 +343,9 @@ function paint(paths, width, height) {
     // 缩放rect直至适合窗口大小
     do {
         let changed = true;
-        if (RWidth > width)
+        if (RWidth < width && RHeight < height) {
+            rect.scale(width / RWidth); // 若rect比画布小，先任意调整，会继续循环体
+        } else if (RWidth > width)
             rect.scale(width / RWidth);
         else if (RHeight > height)
             rect.scale(height / RHeight);
@@ -354,7 +359,7 @@ function paint(paths, width, height) {
             break; // finish
     } while (1);
 
-    //console.log('scale bounding rect to w=' + BWidth + ', h=' + BHeight);
+    //console.log('fit rect to w=' + RWidth + ', h=' + RHeight);
 
     if(fuzzyCompare(RWidth, width)){
         ret.horizontalDistance=RWidthFact;
@@ -382,6 +387,9 @@ function paint(paths, width, height) {
 
         ret.points = ret.points.concat(paintPoints);
     });
+
+    ret.topLeft = new PaintPoint(-0.5*RWidth + PicCenterX, -0.5*RHeight + PicCenterY);
+    ret.bottomRight = new PaintPoint(0.5*RWidth + PicCenterX, 0.5*RHeight + PicCenterY);
 
     return ret;
 }
