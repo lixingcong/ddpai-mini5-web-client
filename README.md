@@ -31,7 +31,8 @@ GPS轨迹原始数据源，可以是从记录仪中直接获取，也可以打�
 由于Chrome等现代浏览器对跨站预检较严，必须执行以下步骤，方可收到记录仪的HTTP回复：
 
 - 安装CORS扩展
-- 部署的网站访问使用http协议，而不是https
+- 部署的网站访问使用http协议，而不是https，因为盯盯拍记录仪监听端口http
+- Firefox用户，使用Beta版而不是Stable（打不开config页面），并在`about:config`中设置`dom.security.http_first_pbm = false`，避免强制跳转到https
 
 ### 使用本地文件
 
