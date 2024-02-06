@@ -96,13 +96,12 @@ $('#fetch-gps-file-list').click(function () {
 					}
 
 					duration = UTILS.secondToHumanReadableString(to - from);
-					from = DF.timestampToString(from, HtmlTableFormat, false);
-					to = DF.timestampToString(to, HtmlTableFormat, false);
+					const tsStr = HtmlTableTimestampToString(from,to);
 
-					fromHref = '<a href="javascript:copyUrls(' + idx + ')">' + from + '</a>';
+					fromHref = '<a href="javascript:copyUrls(' + idx + ')">' + tsStr + '</a>';
 					button = '<button class="set-src-single-row" value="' + idx + '">单选</button><br/>';
 					checkBox = '<label><input type="checkbox" value="' + idx + '" name="history-select">选择 </label>';
-					innerHtml += '<td>' + fromHref + '<br/>' + to + '</td><td>' + duration + '</td><td>' + checkBox + button + '</td></tr>\n';
+					innerHtml += '<td>' + fromHref + '</td><td>' + duration + '</td><td>' + checkBox + button + '</td></tr>\n';
 				}
 			});
 
@@ -137,6 +136,39 @@ function isFilenameGpxGit(filename) {
 	return filename.search(/\d{14}_\d{4}(_D|_T)?\.g(px|it)/i) >= 0;
 }
 
+function fileNameTsFromTo(a, b) {
+	const TrackFileNameFormat = 'yyyyMMdd-hhmm'; // 文件名日期格式，不能含特殊字符，如冒号
+	const from = DF.timestampToString(a, TrackFileNameFormat, false);
+	const to = DF.timestampToString(b, TrackFileNameFormat, false);
+	if(from.substring(0,8) == to.substring(0,8)) // same date
+		return from + '到' + to.substring(9);
+	return from + '到' + to;
+}
+
+function descriptionTsFromTo(a, b) {
+	const from = DF.timestampToString(a, WayPointDescriptionFormat, false);
+	const to = DF.timestampToString(b, WayPointDescriptionFormat, false);
+	if(from.substring(0,8) == to.substring(0,8)) // same date
+		return from + '~' + to.substring(9);
+	return from + '~' + to;
+}
+
+function simpleTimestampToString(a, b) {
+	const from = DF.timestampToString(a, HtmlTableFormat, false);
+	const to = DF.timestampToString(b, HtmlTableFormat, false);
+	if(from.substring(0,5) == to.substring(0,5)) // same date
+		return from + '~' + to.substring(6);
+	return from + '~' + to;
+}
+
+function HtmlTableTimestampToString(a, b) {
+	const from = DF.timestampToString(a, HtmlTableFormat, false);
+	const to = DF.timestampToString(b, HtmlTableFormat, false);
+	if(from.substring(0,5) == to.substring(0,5)) // same date
+		return from.substring(6) + '到' + to.substring(6);
+	return from + '<br/>' + to;
+}
+
 function exportToTrack(singleFile) {
 	const costTimestampBegin = DF.now();
 	const timestamps = Object.keys(g_timestampToWayPoints).sort(); // 按时间排序
@@ -151,31 +183,6 @@ function exportToTrack(singleFile) {
 		let timestampsGrouped = UTILS.splitOrderedNumbersByThreshold(timestamps, splitPathThresholdSecond());
 
 		const zip = new JSZip();
-
-		const fileNameTsFromTo = (a, b) => {
-			const TrackFileNameFormat = 'yyyyMMdd-hhmm'; // 文件名日期格式，不能含特殊字符，如冒号
-			const from = DF.timestampToString(a, TrackFileNameFormat, false);
-			const to = DF.timestampToString(b, TrackFileNameFormat, false);
-			if(from.substring(0,8) == to.substring(0,8))
-				return from + '到' + to.substring(9);
-			return from + '到' + to;
-		}
-
-		const descriptionTsFromTo = (a, b) => {
-			const from = DF.timestampToString(a, WayPointDescriptionFormat, false);
-			const to = DF.timestampToString(b, WayPointDescriptionFormat, false);
-			if(from.substring(0,8) == to.substring(0,8))
-				return from + '~' + to.substring(9);
-			return from + '~' + to;
-		}
-
-		const simpleTimestampToString = (a, b) => {
-			const from = DF.timestampToString(a, HtmlTableFormat, false);
-			const to = DF.timestampToString(b, HtmlTableFormat, false);
-			if(from.substring(0,5) == to.substring(0,5))
-				return from + '~' + to.substring(6);
-			return from + '~' + to;
-		}
 
 		const ExportFormat = $('select#select-export-format').find(":selected").val();
 		const EnableTrack = $('#enable-export-track').prop('checked');
