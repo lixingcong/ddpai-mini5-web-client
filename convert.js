@@ -280,8 +280,14 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
         return; // No need for convert
     }
 
+    let keepTheFile = true;
     if(g_useTrackFileHook && window.trackFileHook)
-        window.trackFileHook(myFile.trackFile);
+        keepTheFile = window.trackFileHook(myFile.trackFile);
+
+    if(!keepTheFile){
+        reject(new Error('Removed by hook: ' + srcName));
+        return;
+    }
 
     switch(destFormat){
         case 'kml':

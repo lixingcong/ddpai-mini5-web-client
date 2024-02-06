@@ -21,6 +21,8 @@ function timeShift(trackFile) {
     trackFile.points.forEach(point => { Offset(point.wayPoint); });
     trackFile.lines.forEach(path => { path.wayPoints.forEach(Offset); });
     trackFile.tracks.forEach(path => { path.wayPoints.forEach(Offset); });
+
+    return true;
 }
 
 /**
@@ -32,6 +34,8 @@ function clearInvalidAltitude(trackFile) {
     trackFile.points.forEach(point => { Clear(point.wayPoint); });
     trackFile.lines.forEach(path => { path.wayPoints.forEach(Clear); });
     trackFile.tracks.forEach(path => { path.wayPoints.forEach(Clear); });
+
+    return true;
 }
 
 /**
@@ -82,6 +86,8 @@ function fixDescription(trackFile) {
     trackFile.points.forEach(Check);
     trackFile.lines.forEach(Check);
     trackFile.tracks.forEach(Check);
+
+    return true;
 }
 
 /**
@@ -91,6 +97,8 @@ function removeAll(trackFile) {
     trackFile.points = [];
     trackFile.lines = [];
     trackFile.tracks = [];
+
+    return true;
 }
 
 /**
@@ -119,6 +127,8 @@ function sampleByDistance(trackFile) {
 
     trackFile.lines.forEach(Check);
     trackFile.tracks.forEach(Check);
+
+    return true;
 }
 
 /**
@@ -145,6 +155,8 @@ function sampleByTimeInterval(trackFile) {
     };
 
     trackFile.tracks.forEach(Check);
+
+    return true;
 }
 
 /**
@@ -172,6 +184,8 @@ function sampleByIndexInterval(trackFile) {
 
     trackFile.tracks.forEach(Check);
     trackFile.lines.forEach(Check);
+
+    return true;
 }
 
 /**
@@ -188,4 +202,15 @@ function downloadAsJson(trackFile) {
     const div =  $('#exportedTrackList');
     div.append(newLink);
     div.append('<br/>');
+
+    return true;
+}
+
+/**
+ * 移除那些包含轨迹的文件
+ */
+function removeIfContainTrack(trackFile) {
+    if(trackFile.track.length > 0)
+        return false;
+    return true;
 }

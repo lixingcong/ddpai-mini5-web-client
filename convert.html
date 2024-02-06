@@ -61,6 +61,8 @@ function(trackFile){
  trackFile.points.forEach(point => { offset(point.wayPoint); });
  trackFile.lines.forEach(path => { path.wayPoints.forEach(offset); });
  trackFile.tracks.forEach(path => { path.wayPoints.forEach(offset); });
+
+ return true; // keep the file or remove it
 }</textarea>
 		</details>
 		<div id="progressBarDiv" style="display: none;">
