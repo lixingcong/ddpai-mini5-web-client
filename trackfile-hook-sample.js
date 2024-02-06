@@ -7,7 +7,9 @@ export {
     removeAll,
     sampleByDistance,
     sampleByTimeInterval,
-    sampleByIndexInterval
+    sampleByIndexInterval,
+    convertTrackToLine,
+    //sortByName,
 };
 
 /**
@@ -186,6 +188,28 @@ function sampleByIndexInterval(trackFile) {
     trackFile.lines.forEach(Check);
 
     return true;
+}
+
+/**
+ * 将轨迹转为不含时间信息的路径
+ */
+function convertTrackToLine(trackFile) {
+    // 这里只做简单的判断是否轨迹重叠：起点是否为同一个点（2米内）
+    const MinDistance = 2;
+
+    let lineStarts = trackFile.lines.map(path => path.wayPoints[0]);
+
+    trackFile.tracks.forEach(path => {
+        const trackStart = path.wayPoints[0];
+        const same = lineStarts.find(lineStart => lineStart.distanceTo(trackStart) < MinDistance);
+        if(!same){
+            trackFile.lines.push(path);
+            lineStarts.push(trackStart);
+        }
+    });
+
+    trackFile.tracks = []; // clear
+    return trackFile.lines.length > 0; // ignore if empty
 }
 
 /**

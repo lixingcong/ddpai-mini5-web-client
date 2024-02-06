@@ -180,4 +180,36 @@ if(1){
         TEST_COMMON.assert(track.tracks[0].wayPoints[i].timestamp == Expect[i], 'sampleByIndexInterval idx='+i);
 }
 
+if(1){
+    const track = new TRACK.TrackFile;
+
+    track.lines=[
+        new TRACK.Path('L1', [
+            new WP.WayPoint(0,1),
+            new WP.WayPoint(0,2)
+        ]),
+    ];
+
+    track.tracks=[
+        new TRACK.Path('T1', [
+            new WP.WayPoint(0,1,86400),
+            new WP.WayPoint(0,5,86401)
+        ]),
+        new TRACK.Path('T2', [
+            new WP.WayPoint(0,5,86400),
+            new WP.WayPoint(0,6,86401)
+        ]),
+        new TRACK.Path('T3', [
+            new WP.WayPoint(0,5,86400),
+            new WP.WayPoint(0,333,86401)
+        ])
+    ];
+
+    HOOK.convertTrackToLine(track);
+    TEST_COMMON.assert(track.lines.length == 2, "invalid line count");
+    TEST_COMMON.assert(track.tracks.length == 0, "invalid track count");
+    TEST_COMMON.assert(track.lines[0].name == 'L1', "invalid line[0] name");
+    TEST_COMMON.assert(track.lines[1].name == 'T2', "invalid line[1] name");
+}
+
 console.log('Test passed');
