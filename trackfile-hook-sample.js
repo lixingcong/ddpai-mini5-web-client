@@ -9,7 +9,7 @@ export {
     sampleByTimeInterval,
     sampleByIndexInterval,
     convertTrackToLine,
-    //sortByName,
+    sortByName
 };
 
 /**
@@ -210,6 +210,17 @@ function convertTrackToLine(trackFile) {
 
     trackFile.tracks = []; // clear
     return trackFile.lines.length > 0; // ignore if empty
+}
+
+/**
+ * 按名字排序
+ */
+function sortByName(trackFile) {
+    const cmp = (a, b) => a.name.localeCompare(b.name);
+    trackFile.points.sort(cmp);
+    trackFile.tracks.sort(cmp);
+    trackFile.lines.sort(cmp);
+    return true;
 }
 
 /**

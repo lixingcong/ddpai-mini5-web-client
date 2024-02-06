@@ -206,10 +206,29 @@ if(1){
     ];
 
     HOOK.convertTrackToLine(track);
-    TEST_COMMON.assert(track.lines.length == 2, "invalid line count");
-    TEST_COMMON.assert(track.tracks.length == 0, "invalid track count");
-    TEST_COMMON.assert(track.lines[0].name == 'L1', "invalid line[0] name");
-    TEST_COMMON.assert(track.lines[1].name == 'T2', "invalid line[1] name");
+    TEST_COMMON.assert(track.lines.length == 2, "convertTrackToLine invalid line count");
+    TEST_COMMON.assert(track.tracks.length == 0, "convertTrackToLine invalid track count");
+    TEST_COMMON.assert(track.lines[0].name == 'L1', "convertTrackToLine invalid line[0] name");
+    TEST_COMMON.assert(track.lines[1].name == 'T2', "convertTrackToLine invalid line[1] name");
+}
+
+if(1){
+    const track = new TRACK.TrackFile;
+
+    track.points=[
+        new TRACK.Point('5', new WP.WayPoint(0,0)),
+        new TRACK.Point('1', new WP.WayPoint(0,0)),
+        new TRACK.Point('3', new WP.WayPoint(0,0)),
+        new TRACK.Point('2', new WP.WayPoint(0,0)),
+        new TRACK.Point('4', new WP.WayPoint(0,0))
+    ];
+
+    HOOK.sortByName(track);
+
+    const Expect = ['1','2','3','4','5'];
+    TEST_COMMON.assert(track.points.length == Expect.length, 'sortByName precheck 1');
+    for(let i=0;i<Expect.length;++i)
+        TEST_COMMON.assert(track.points[i].name == Expect[i], 'sortByName idx='+i);
 }
 
 console.log('Test passed');
