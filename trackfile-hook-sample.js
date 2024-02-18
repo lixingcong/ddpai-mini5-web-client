@@ -8,6 +8,7 @@ export {
     sampleByDistance,
     sampleByTimeInterval,
     sampleByIndexInterval,
+    sampleBetweenTime,
     convertTrackToLine,
     sortByName
 };
@@ -186,6 +187,24 @@ function sampleByIndexInterval(trackFile) {
 
     trackFile.tracks.forEach(Check);
     trackFile.lines.forEach(Check);
+
+    return true;
+}
+
+/**
+ * 对轨迹抽样，精简轨迹（取出某端时间内的轨迹）
+ * https://www.epochconverter.com
+ */
+function sampleBetweenTime(trackFile) {
+    const StartTime = 1708029042;
+    const EndTime   = 1708034442;
+
+    const Filter = wp => StartTime <= wp.timestamp && wp.timestamp <= EndTime;
+    trackFile.tracks.forEach(path => {
+        path.wayPoints = path.wayPoints.filter(Filter);
+    });
+
+    trackFile.tracks = trackFile.tracks.filter(path => path.wayPoints.length > 0);
 
     return true;
 }

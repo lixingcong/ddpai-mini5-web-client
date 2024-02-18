@@ -231,4 +231,37 @@ if(1){
         TEST_COMMON.assert(track.points[i].name == Expect[i], 'sortByName idx='+i);
 }
 
+if(1){
+    const track = new TRACK.TrackFile;
+    const StartTime = 1708029042;
+    const EndTime   = 1708034442;
+
+    track.tracks=[
+        new TRACK.Path('T1', [
+            new WP.WayPoint(0,0,StartTime-100),
+            new WP.WayPoint(0,0,StartTime-99),
+            new WP.WayPoint(0,0,StartTime-98),
+            new WP.WayPoint(0,0,StartTime-97)
+        ]),
+        new TRACK.Path('T2', [
+            new WP.WayPoint(0,0,StartTime),
+            new WP.WayPoint(0,0,StartTime+1),
+            new WP.WayPoint(0,0,EndTime-1),
+            new WP.WayPoint(0,0,EndTime)
+        ]),
+        new TRACK.Path('T3', [
+            new WP.WayPoint(0,0,StartTime-1),
+            new WP.WayPoint(0,0,StartTime+1),
+            new WP.WayPoint(0,0,EndTime),
+            new WP.WayPoint(0,0,EndTime+1)
+        ])
+    ];
+
+    HOOK.sampleBetweenTime(track);
+
+    TEST_COMMON.assert(track.tracks.length == 2, 'sampleBetweenTime 1');
+    TEST_COMMON.assert(track.tracks[0].wayPoints.length == 4, 'sampleBetweenTime 2');
+    TEST_COMMON.assert(track.tracks[1].wayPoints.length == 2, 'sampleBetweenTime 3');
+}
+
 console.log('Test passed');
