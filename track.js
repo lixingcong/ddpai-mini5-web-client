@@ -224,7 +224,7 @@ class Rect
 
     isValid()
     {
-        return undefined!=this.topLeftX && undefined!=this.topLeftY && undefined!=this.bottomRightX && undefined!=this.bottomRightY;
+        return Number.MAX_SAFE_INTEGER!=this.topLeftX && Number.MAX_SAFE_INTEGER!=this.topLeftY && Number.MIN_SAFE_INTEGER!=this.bottomRightX && Number.MIN_SAFE_INTEGER!=this.bottomRightY;
     }
 
     center()
@@ -282,7 +282,7 @@ class PaintPoint {
 }
 
 class PaintResult {
-    constructor(paintPoints, horizontalDistance, verticalDistance)
+    constructor(paintPoints=[], horizontalDistance=0, verticalDistance=0)
     {
         this.points = paintPoints;
         this.horizontalDistance = horizontalDistance; // 画布的实际距离（米）
@@ -318,16 +318,16 @@ function paint(paths, width, height) {
         rect.merge(Rect.fromPoints(xy));
     });
 
+    let ret = new PaintResult();
+
     if(!rect.isValid())
-        return undefined; // invalid
+        return ret; // invalid
 
     let RWidth = rect.width();
     let RHeight = rect.height();
 
     const RWidthFact=RWidth; // 实际轨迹边框尺寸
     const RHeightFact=RHeight;
-
-    let ret = new PaintResult([], 0, 0);
 
     {
         // 将源点位平移到中点，然后归一化到[-0.5,0.5]
