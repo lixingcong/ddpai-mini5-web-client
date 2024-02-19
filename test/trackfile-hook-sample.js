@@ -233,27 +233,29 @@ if(1){
 
 if(1){
     const track = new TRACK.TrackFile;
-    const StartTime = 1708029042;
-    const EndTime   = 1708034442;
+
+    const T = s => Date.parse(s) / 1000;
+    const T1 = T('2024-02-16T04:30:00+08:00');
+    const T2 = T('2024-02-16T06:00:00+08:00');
 
     track.tracks=[
         new TRACK.Path('T1', [
-            new WP.WayPoint(0,0,StartTime-100),
-            new WP.WayPoint(0,0,StartTime-99),
-            new WP.WayPoint(0,0,StartTime-98),
-            new WP.WayPoint(0,0,StartTime-97)
+            new WP.WayPoint(0,0,T1-100),
+            new WP.WayPoint(0,0,T1-99),
+            new WP.WayPoint(0,0,T1-98),
+            new WP.WayPoint(0,0,T1-97)
         ]),
         new TRACK.Path('T2', [
-            new WP.WayPoint(0,0,StartTime),
-            new WP.WayPoint(0,0,StartTime+1),
-            new WP.WayPoint(0,0,EndTime-1),
-            new WP.WayPoint(0,0,EndTime)
+            new WP.WayPoint(0,0,T1),
+            new WP.WayPoint(0,0,T1+1),
+            new WP.WayPoint(0,0,T2-1),
+            new WP.WayPoint(0,0,T2)
         ]),
         new TRACK.Path('T3', [
-            new WP.WayPoint(0,0,StartTime-1),
-            new WP.WayPoint(0,0,StartTime+1),
-            new WP.WayPoint(0,0,EndTime),
-            new WP.WayPoint(0,0,EndTime+1)
+            new WP.WayPoint(0,0,T1-1),
+            new WP.WayPoint(0,0,T1+1),
+            new WP.WayPoint(0,0,T2),
+            new WP.WayPoint(0,0,T2+1)
         ])
     ];
 

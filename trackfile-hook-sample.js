@@ -192,14 +192,14 @@ function sampleByIndexInterval(trackFile) {
 }
 
 /**
- * 对轨迹抽样，精简轨迹（取出某端时间内的轨迹）
- * https://www.epochconverter.com
+ * 对轨迹抽样，精简轨迹（取出某段时间内的轨迹）
  */
 function sampleBetweenTime(trackFile) {
-    const StartTime = 1708029042;
-    const EndTime   = 1708034442;
+    const T  = s => Date.parse(s) / 1000;
+    const T1 = T('2024-02-16T04:30:00+08:00');
+    const T2 = T('2024-02-16T06:00:00+08:00');
 
-    const Filter = wp => StartTime <= wp.timestamp && wp.timestamp <= EndTime;
+    const Filter = wp => T1 <= wp.timestamp && wp.timestamp <= T2;
     trackFile.tracks.forEach(path => {
         path.wayPoints = path.wayPoints.filter(Filter);
     });
