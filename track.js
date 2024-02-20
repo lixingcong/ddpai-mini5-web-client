@@ -83,7 +83,7 @@ class TrackFile
             const path = this.lines[0];
             let placeMark = new KML.PlaceMark(path.name);
             placeMark.description = path.description;
-            placeMark.lineString = new KML.LineString(new KML.Coordinates(path.wayPoints.map(wp => wp2KmlCoordinate(wp))), AltitudeMode);
+            placeMark.lineString = new KML.LineString(new KML.Coordinates(path.wayPoints.map(wp => wp2KmlCoordinate(wp))), KML.AltitudeMode.ClampToGround);
             placeMark.styleId=GreenStyle.id;
             document.placeMarks.push(placeMark);
         }else if(1<this.lines.length){
@@ -91,7 +91,7 @@ class TrackFile
             folder.placeMarks = this.lines.map(path => {
                 let placeMark = new KML.PlaceMark(path.name);
                 placeMark.description = path.description;
-                placeMark.lineString = new KML.LineString(new KML.Coordinates(path.wayPoints.map(wp => wp2KmlCoordinate(wp))), AltitudeMode);
+                placeMark.lineString = new KML.LineString(new KML.Coordinates(path.wayPoints.map(wp => wp2KmlCoordinate(wp))), KML.AltitudeMode.ClampToGround);
                 placeMark.styleId=GreenStyle.id;
                 return placeMark;
             });
