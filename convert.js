@@ -20,14 +20,38 @@ var g_useTrackFileHook = false;
 var g_canvasWidth = TL.CanvasDefaultWidth;
 var g_canvasHeight = TL.CanvasDefaultHeight;
 
+class Converted
+{
+    constructor(name,content,trackFile) // 转换后的数据
+    {
+        this.name=name;
+        this.content=content;
+        this.trackFile=trackFile;
+    }
+}
+
 class MyFile
 {
     constructor(name)
     {
-        this.name = name;
-        this.content = undefined;
+        this.name = name; // 源名字
+        this.content = undefined; // 源数据
+        this.converted = []; // Converted对象
         this.keepSameFormat = false; // 当目标格式与源格式相同时，保持原样，无需转换
         this.trackFile = undefined;
+    }
+
+    parseName()
+    {
+        // 额外的处理，得出文件名、小写的扩展名
+        const splited = this.name.split('.');
+        const splitedCount = splited.length;
+        if(splitedCount>1){
+            const suffix=splited[splitedCount-1].toLowerCase();
+            const prefix=this.name.substring(0, this.name.length-suffix.length - 1);
+            return [prefix, suffix]; // prefix: 不含'.'字符
+        }
+        return undefined;
     }
 }
 
@@ -37,50 +61,74 @@ const appendFile = myFile => {
 }
 
 $('#convert').click(function () {
-    const costTimestampBegin = DF.now();
     const srcFiles = $("#select-files")[0].files;
-    const fileCount = srcFiles.length;
 
-    if(fileCount<1)
+    if(srcFiles.length<1)
     {
         appendError('请至少上传一个文件');
 		return;
     }
 
-    // reset status
-    g_fileCount=fileCount;
-    g_files=[];
-    setProgress(0);
-    clearErrors();
-
-    const exportedTrackList = $('#exportedTrackList');
-    exportedTrackList.empty();
-
-    const infoList=$('#infoList')
-    infoList.empty();
-
-    g_enableBeautify = $('#enable-export-beautify').prop('checked');
-    g_forceConvert = $('#force-convert-same-fmt').prop('checked');
     g_useTrackFileHook = $('#use-trackfile-hook').prop('checked');
-    g_canvasWidth = parseInt($('#canvas-width').val());
-    g_canvasHeight = parseInt($('#canvas-height').val());
-    const DestFileFormat = $('select#select-convert-format').find(":selected").val();
 
     // Remove custom hook
     if(g_trackFileHookScript){
-        document.head.removeChild(g_trackFileHookScript);
+        g_trackFileHookScript.remove();
         g_trackFileHookScript=undefined;
     }
 
     // Load custom hook
     if(g_useTrackFileHook){
-        g_trackFileHookScript = document.createElement('script');
-        const trackFileHook=$('#trackfile-hook-func').val();
-        g_trackFileHookScript.appendChild(document.createTextNode('window.trackFileHook='+trackFileHook+';'));
-        document.head.appendChild(g_trackFileHookScript);
-    }
+        window.trackFileHook  = undefined;
+        const waitHookToBeReady = async () => {
+            // https://stackoverflow.com/a/53269990/5271632
+            const t1 = Date.now();
+            while (undefined == window.trackFileHook) {
+                if(Date.now() - t1 > 500){
+                    await new Promise.reject();
+                    return;
+                }
+                await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+        };
 
+        const trackFileHook=$('#trackfile-hook-func').val();
+        g_trackFileHookScript = $('<script>', { text: trackFileHook, type: 'module' });
+        g_trackFileHookScript.prop('async',true);
+        $('head').append(g_trackFileHookScript);
+
+        waitHookToBeReady().then(() => {
+            beginToExport(srcFiles);
+        }).catch(() => {
+            appendError('Load hook timeout');
+        });
+    }else
+        beginToExport(srcFiles);
+});
+
+const beginToExport = (srcFiles) => {
+    const costTimestampBegin = DF.now();
     let promises = [];
+    const fileCount = srcFiles.length;
+
+     // reset status
+     g_fileCount=fileCount;
+     g_files=[];
+     setProgress(0);
+     clearErrors();
+
+     const exportedTrackList = $('#exportedTrackList');
+     exportedTrackList.empty();
+
+     const infoList=$('#infoList')
+     infoList.empty();
+
+     g_enableBeautify = $('#enable-export-beautify').prop('checked');
+     g_forceConvert = $('#force-convert-same-fmt').prop('checked');
+     g_canvasWidth = parseInt($('#canvas-width').val());
+     g_canvasHeight = parseInt($('#canvas-height').val());
+     const DestFileFormat = $('select#select-convert-format').find(":selected").val();
+
     for(let i=0;i<fileCount;++i){
         const f = srcFiles[i];
 
@@ -98,7 +146,7 @@ $('#convert').click(function () {
 			}
 		});
 
-        g_files = g_files.filter(myFile => { return myFile && undefined != myFile.content; });
+        g_files = g_files.filter(myFile => { return myFile && myFile.converted.length > 0; });
         g_files.sort((a, b) => a.name.localeCompare(b.name)); // 按文件名排序
 
         let stat = {
@@ -112,7 +160,7 @@ $('#convert').click(function () {
             const zipFolder = zip.folder(zipHint);
 
             g_files.forEach(myFile => {
-                zipFolder.file(myFile.name, myFile.content);
+                myFile.converted.forEach(c => { zipFolder.file(c.name, c.content); });
 
                 if (myFile.keepSameFormat)
                     ++stat.same;
@@ -148,7 +196,7 @@ $('#convert').click(function () {
 
         infoList.append('源数目: '+g_fileCount+', 已转换: '+stat.converted+ ', 无需转换: '+  stat.same + '<br/>耗时'+ UTILS.millisecondToHumanReadableString(DF.now() - costTimestampBegin));
 	});
-});
+}
 
 $('#use-trackfile-hook').change(function(){
     const checked = $('#use-trackfile-hook').prop('checked');
@@ -197,22 +245,26 @@ function list_all_files(btn)
     const exportedTrackList=$('#exportedTrackList');
 
     g_files.forEach((myFile) => {
-        const divRoot = TL.newRootDiv();
-        exportedTrackList.append(divRoot);
+        myFile.converted.forEach(c => {
+            const divRoot = TL.newRootDiv();
+            exportedTrackList.append(divRoot);
 
-        const paths = myFile.trackFile.lines.concat(myFile.trackFile.tracks);
-        const paintResult = TRACK.paint(paths, g_canvasWidth, g_canvasHeight);
-        divRoot.append(TL.newCanvasDiv(paintResult.points, true, g_canvasWidth, g_canvasHeight));
+            const trackFile = c.trackFile;
 
-        const divLink=TL.newDownloadLinkDiv(new Blob([myFile.content]), myFile.name);
-        divLink.append($('<div>', {
-            text: '点位' + myFile.trackFile.points.length + '，路径' + myFile.trackFile.lines.length +
-             '，轨迹' + myFile.trackFile.tracks.length + (myFile.keepSameFormat?'，未转换':'')
-        }));
-        divLink.append($('<div>', {
-            text: '比例尺：' + UTILS.meterToString(paintResult.horizontalDistance)+'×'+UTILS.meterToString(paintResult.verticalDistance)
-        }))
-        divRoot.append(divLink);
+            const paths = trackFile.lines.concat(trackFile.tracks);
+            const paintResult = TRACK.paint(paths, g_canvasWidth, g_canvasHeight);
+            divRoot.append(TL.newCanvasDiv(paintResult.points, true, g_canvasWidth, g_canvasHeight));
+
+            const divLink=TL.newDownloadLinkDiv(new Blob([c.content]), c.name);
+            divLink.append($('<div>', {
+                text: '点位' + trackFile.points.length + '，路径' + trackFile.lines.length +
+                 '，轨迹' + trackFile.tracks.length + (myFile.keepSameFormat?'，未转换':'')
+            }));
+            divLink.append($('<div>', {
+                text: '比例尺：' + UTILS.meterToString(paintResult.horizontalDistance)+'×'+UTILS.meterToString(paintResult.verticalDistance)
+            }))
+            divRoot.append(divLink);
+        });
     });
 }
 
@@ -239,34 +291,29 @@ const promiseReadBlob = blob => new Promise(function (resolve, reject) {
 const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolve, reject) {
     // API: resolve(MyFile)
     const srcName = myFile.name;
-    const srcNameSplited = srcName.split('.');
-    if(srcNameSplited.length<2){
+    const srcPrefixSuffix=myFile.parseName();
+
+    if(undefined == srcPrefixSuffix){
         reject(new Error('Invalid file extension: ' + srcName));
         return;
     }
 
-    const srcExtName = srcNameSplited[srcNameSplited.length-1].toLowerCase(); // 取出扩展名
+    const srcPrefix = srcPrefixSuffix[0];
+    const srcSuffix = srcPrefixSuffix[1];
 
-    // set new name
-    const srcRawNameLength = srcName.length - srcExtName.length;
-    const srcRawName = srcName.substring(0, srcRawNameLength);
-    myFile.name=srcRawName+destFormat;
-
-    switch(srcExtName){
+    let fromFile=undefined;
+    switch(srcSuffix){
         case 'kml':
-            const kmlDoc = KML.Document.fromFile(myFile.content);
-            if(kmlDoc)
-                myFile.trackFile=TRACK.TrackFile.fromKMLDocument(kmlDoc);
+            fromFile = c => TRACK.TrackFile.fromKMLDocument(KML.Document.fromFile(c));
             break;
         case 'gpx':
-            const gpxDoc = GPX.Document.fromFile(myFile.content);
-            if(gpxDoc)
-                myFile.trackFile=TRACK.TrackFile.fromGPXDocument(gpxDoc);
+            fromFile = c => TRACK.TrackFile.fromGPXDocument(GPX.Document.fromFile(c));
             break;
         default:
-            reject(new Error('Unsupport file extension: ' + srcExtName + ' of ' + srcName));
+            reject(new Error('Unsupport file extension: ' + srcSuffix + ' of ' + srcName));
             return;
     }
+    myFile.trackFile=fromFile(myFile.content);
 
     if(undefined==myFile.trackFile){
         reject(new Error('Failed to build TrackFile object: ' + srcName));
@@ -274,32 +321,44 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
     }
 
     // skip if has same format
-    if(false == g_forceConvert && srcExtName == destFormat){
+    if(false == g_forceConvert && srcSuffix == destFormat){
         myFile.keepSameFormat = true;
+        myFile.converted=[new Converted(myFile.name, myFile.content, myFile.trackFile)];
         resolve(myFile);
         return; // No need for convert
     }
 
-    let keepTheFile = true;
+    let newTrackFiles = [myFile.trackFile];
     if(g_useTrackFileHook && window.trackFileHook)
-        keepTheFile = window.trackFileHook(myFile.trackFile);
+        newTrackFiles = window.trackFileHook(myFile.trackFile);
 
-    if(!keepTheFile){
+    if(0 == newTrackFiles.length){
         reject(new Error('Removed by hook: ' + srcName));
         return;
     }
 
+    let toFile = undefined;
     switch(destFormat){
         case 'kml':
-            myFile.content = myFile.trackFile.toKMLDocument().toFile(g_enableBeautify);
+            toFile = t => t.toKMLDocument().toFile(g_enableBeautify);
             break;
         case 'gpx':
-            myFile.content = myFile.trackFile.toGPXDocument().toFile(g_enableBeautify);
+            toFile = t => t.toGPXDocument().toFile(g_enableBeautify);
             break;
         default:
             reject(new Error('Unsupport dest format: ' + destFormat));
             return;
     }
+    const newContents = newTrackFiles.map(toFile);
+    if(1==newContents.length){
+        myFile.converted=[new Converted(srcPrefix+'.'+destFormat, newContents[0], myFile.trackFile)];
+    }else{
+        const width = UTILS.intWidth(newContents.length);
+        myFile.converted=newContents.map((c,idx) => new Converted(
+            srcPrefix + '_' + UTILS.zeroPad(idx+1, width) + '.' + destFormat, c, newTrackFiles[idx]
+        ));
+    }
+
     resolve(myFile);
 });
 

@@ -10,8 +10,11 @@ export {
     sampleByIndexInterval,
     sampleBetweenTime,
     convertTrackToLine,
-    sortByName
+    sortByName,
+    splitAllPaths
 };
+
+import { TrackFile } from "./track.js";
 
 /**
  * 时间加上固定偏移，一般用于时区校正
@@ -25,7 +28,7 @@ function timeShift(trackFile) {
     trackFile.lines.forEach(path => { path.wayPoints.forEach(Offset); });
     trackFile.tracks.forEach(path => { path.wayPoints.forEach(Offset); });
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -38,7 +41,7 @@ function clearInvalidAltitude(trackFile) {
     trackFile.lines.forEach(path => { path.wayPoints.forEach(Clear); });
     trackFile.tracks.forEach(path => { path.wayPoints.forEach(Clear); });
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -90,7 +93,7 @@ function fixDescription(trackFile) {
     trackFile.lines.forEach(Check);
     trackFile.tracks.forEach(Check);
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -101,7 +104,7 @@ function removeAll(trackFile) {
     trackFile.lines = [];
     trackFile.tracks = [];
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -131,7 +134,7 @@ function sampleByDistance(trackFile) {
     trackFile.lines.forEach(Check);
     trackFile.tracks.forEach(Check);
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -159,7 +162,7 @@ function sampleByTimeInterval(trackFile) {
 
     trackFile.tracks.forEach(Check);
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -188,7 +191,7 @@ function sampleByIndexInterval(trackFile) {
     trackFile.tracks.forEach(Check);
     trackFile.lines.forEach(Check);
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -206,7 +209,7 @@ function sampleBetweenTime(trackFile) {
 
     trackFile.tracks = trackFile.tracks.filter(path => path.wayPoints.length > 0);
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -228,7 +231,11 @@ function convertTrackToLine(trackFile) {
     });
 
     trackFile.tracks = []; // clear
-    return trackFile.lines.length > 0; // ignore if empty
+
+    if (trackFile.lines.length > 0)
+        return [trackFile];
+
+    return []; // ignore if track is empty
 }
 
 /**
@@ -239,7 +246,7 @@ function sortByName(trackFile) {
     trackFile.points.sort(cmp);
     trackFile.tracks.sort(cmp);
     trackFile.lines.sort(cmp);
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -257,7 +264,7 @@ function downloadAsJson(trackFile) {
     div.append(newLink);
     div.append('<br/>');
 
-    return true;
+    return [trackFile];
 }
 
 /**
@@ -266,5 +273,29 @@ function downloadAsJson(trackFile) {
 function removeIfContainTrack(trackFile) {
     if(trackFile.track.length > 0)
         return false;
-    return true;
+    return [trackFile];
+}
+
+/**
+ * 分拆所有轨迹、线条
+ */
+function splitAllPaths(trackFile) {
+    let ret =[];
+
+    const Split = (path, isLine) => {
+        let t = new TrackFile;
+        if(isLine)
+            t.lines=[path];
+        else
+            t.tracks=[path];
+        ret.push(t);
+    }
+
+    const SplitLine = path => Split(path, true);
+    const SplitTrack = path => Split(path, false);
+
+    trackFile.lines.forEach(SplitLine);
+    trackFile.tracks.forEach(SplitTrack);
+
+    return ret;
 }

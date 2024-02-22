@@ -9,7 +9,8 @@ export {
     byteToHumanReadableSize,
     isObjectEmpty,
     zeroPad,
-	splitOrderedNumbersByThreshold
+	splitOrderedNumbersByThreshold,
+    randomString
 };
 
 // 将数字（单位：米）转成字符串
@@ -115,3 +116,8 @@ function splitOrderedNumbersByThreshold(numbers, threshold)
 
     return ret;
 };
+
+function randomString(len)
+{
+    return [...Array(len)].map(() => Math.random().toString(36)[2]).join('');
+}

@@ -49,8 +49,10 @@
 				<span class="help-tip"><p>构建TrackFile对象，对轨迹进行后处理，如将路径坐标偏移，或者移除高度信息，需要对本项目源码熟悉</p></span>
 				<a target="_blank" href="https://github.com/lixingcong/ddpai-mini5-web-client/blob/master/trackfile-hook-sample.js">参考源码</a>
 			</div>
-			<textarea id="trackfile-hook-func" rows="10" cols="0" style="display: none;">
-function(trackFile){
+			<textarea id="trackfile-hook-func" rows="12" cols="0" style="display: none;">
+import { TrackFile } from "./track.js";
+
+window.trackFileHook = function(trackFile){
  const offset = wp => {
    const X = 0.1;
    wp.lat += X;
@@ -62,7 +64,7 @@ function(trackFile){
  trackFile.lines.forEach(path => { path.wayPoints.forEach(offset); });
  trackFile.tracks.forEach(path => { path.wayPoints.forEach(offset); });
 
- return true; // keep the file or remove it
+ return [trackFile]; // 若返回多个TrackFile对象，则分拆轨迹成多文件
 }</textarea>
 		</details>
 		<div id="progressBarDiv" style="display: none;">

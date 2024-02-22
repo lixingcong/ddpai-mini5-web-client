@@ -266,4 +266,41 @@ if(1){
     TEST_COMMON.assert(track.tracks[1].wayPoints.length == 2, 'sampleBetweenTime 3');
 }
 
+if(1){
+    const track = new TRACK.TrackFile;
+
+    track.tracks=[
+        new TRACK.Path('T1', [
+            new WP.WayPoint(0,0,0)
+        ]),
+        new TRACK.Path('T2', [
+            new WP.WayPoint(0,0,1)
+        ])
+    ];
+
+    track.lines=[
+        new TRACK.Path('L1', [
+            new WP.WayPoint(0,0,2)
+        ]),
+        new TRACK.Path('L2', [
+            new WP.WayPoint(0,0,3)
+        ])
+    ];
+
+    const splited = HOOK.splitAllPaths(track);
+
+    TEST_COMMON.assert(splited.length == 4, 'splitAllPaths length');
+    const Expect = ['L1','L2','T1','T2'];
+    Expect.forEach((expect, idx) => {
+        const trackFile = splited[idx];
+        TEST_COMMON.assert(trackFile.lines.length+trackFile.tracks.length==1, 'splitAllPaths idx='+idx+' length');
+        let name = undefined;
+        if(trackFile.lines.length)
+            name = trackFile.lines[0].name;
+        else
+            name = trackFile.tracks[0].name;
+        TEST_COMMON.assert(name == expect, 'splitAllPaths idx='+idx+' name');
+    });
+}
+
 console.log('Test passed');

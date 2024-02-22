@@ -125,6 +125,9 @@ class TrackFile
 
     static fromKMLDocument(document)
     {
+        if(undefined == document)
+            return undefined;
+
         let ret = new TrackFile(document.name);
         ret.description = document.description;
 
@@ -191,6 +194,9 @@ class TrackFile
 
     static fromGPXDocument(document)
     {
+        if(undefined == document)
+            return undefined;
+
         let ret = new TrackFile(document.name);
         ret.description = document.description;
 
