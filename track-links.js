@@ -84,6 +84,7 @@ const newCanvasDiv = (paintPoints, showEdgePoint, width = CanvasDefaultWidth, he
                 ctx.lineTo(pt[0], pt[1]);
                 break;
             case TRACK.PaintCmd.TrackEnd:
+                ctx.lineTo(pt[0], pt[1]);
                 ctx.stroke();
                 endPts.push(pt);
                 break;
