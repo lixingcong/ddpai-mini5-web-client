@@ -290,19 +290,19 @@ const promiseReadBlob = blob => new Promise(function (resolve, reject) {
 
 const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolve, reject) {
     // API: resolve(MyFile)
-    const srcName = myFile.name;
-    const srcPrefixSuffix=myFile.parseName();
+    const SrcName = myFile.name;
+    const SrcPrefixSuffix=myFile.parseName();
 
-    if(undefined == srcPrefixSuffix){
-        reject(new Error('Invalid file extension: ' + srcName));
+    if(undefined == SrcPrefixSuffix){
+        reject(new Error('Invalid file extension: ' + SrcName));
         return;
     }
 
-    const srcPrefix = srcPrefixSuffix[0];
-    const srcSuffix = srcPrefixSuffix[1];
+    const SrcPrefix = SrcPrefixSuffix[0];
+    const SrcSuffix = SrcPrefixSuffix[1];
 
     let fromFile=undefined;
-    switch(srcSuffix){
+    switch(SrcSuffix){
         case 'kml':
             fromFile = c => TRACK.TrackFile.fromKMLDocument(KML.Document.fromFile(c));
             break;
@@ -310,18 +310,18 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
             fromFile = c => TRACK.TrackFile.fromGPXDocument(GPX.Document.fromFile(c));
             break;
         default:
-            reject(new Error('Unsupport file extension: ' + srcSuffix + ' of ' + srcName));
+            reject(new Error('Unsupport file extension: ' + SrcSuffix + ' of ' + SrcName));
             return;
     }
     myFile.trackFile=fromFile(myFile.content);
 
     if(undefined==myFile.trackFile){
-        reject(new Error('Failed to build TrackFile object: ' + srcName));
+        reject(new Error('Failed to build TrackFile object: ' + SrcName));
         return;
     }
 
     // skip if has same format
-    if(false == g_forceConvert && srcSuffix == destFormat){
+    if(false == g_forceConvert && SrcSuffix == destFormat){
         myFile.keepSameFormat = true;
         myFile.converted=[new Converted(myFile.name, myFile.content, myFile.trackFile)];
         resolve(myFile);
@@ -333,7 +333,7 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
         newTrackFiles = window.trackFileHook(myFile.trackFile);
 
     if(0 == newTrackFiles.length){
-        reject(new Error('Removed by hook: ' + srcName));
+        reject(new Error('Removed by hook: ' + SrcName));
         return;
     }
 
@@ -349,15 +349,17 @@ const promiseConvertFormat = (myFile, destFormat) => new Promise(function(resolv
             reject(new Error('Unsupport dest format: ' + destFormat));
             return;
     }
-    const newContents = newTrackFiles.map(toFile);
-    if(1==newContents.length){
-        myFile.converted=[new Converted(srcPrefix+'.'+destFormat, newContents[0], myFile.trackFile)];
-    }else{
-        const width = UTILS.intWidth(newContents.length);
-        myFile.converted=newContents.map((c,idx) => new Converted(
-            srcPrefix + '_' + UTILS.zeroPad(idx+1, width) + '.' + destFormat, c, newTrackFiles[idx]
-        ));
-    }
+    const NewContents = newTrackFiles.map(toFile);
+    const NewContentLength = NewContents.length;
+    const ZeroPadWidth = UTILS.intWidth(NewContentLength);
+
+    let newFileNameFunc = undefined;
+    if(1==NewContentLength)
+        newFileNameFunc = () => SrcPrefix+'.'+destFormat;
+    else
+        newFileNameFunc = idx => SrcPrefix + '_' + UTILS.zeroPad(idx+1, ZeroPadWidth) + '.' + destFormat;
+
+    myFile.converted=NewContents.map((c,idx) => new Converted(newFileNameFunc(idx), c, newTrackFiles[idx]));
 
     resolve(myFile);
 });
