@@ -1,7 +1,6 @@
 {
 	"type": "module",
 	"dependencies": {
-		"fast-xml-parser": "^4.3.3",
 		"node-gd": "^3.0.0"
 	}
 }
