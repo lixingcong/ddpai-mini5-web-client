@@ -346,14 +346,19 @@ function paint(paths, width, height) {
         );
     }
 
+    // 比较浮点数大小，注意这里比较大小不能直接使用a>b这种
+    // 两个相近的数可以满足a>b，如2.000001与2.0，这种情况下算出的scale永远是接近1的值，卡死在do循环中
+    // 也可以试另一种更简单的方法：最多缩放5次，就强制跳出do-while语句
+    const Epsilon = 0.001;
+
     // 缩放rect直至适合窗口大小
     do {
         let changed = true;
-        if (RWidth < width && RHeight < height) {
+        if (width - RWidth > Epsilon && height - RHeight > Epsilon) {
             rect.scale(width / RWidth); // 若rect比画布小，先任意调整，会继续循环体
-        } else if (RWidth > width)
+        } else if (RWidth - width > Epsilon)
             rect.scale(width / RWidth);
-        else if (RHeight > height)
+        else if (RHeight - height > Epsilon)
             rect.scale(height / RHeight);
         else
             changed = false;

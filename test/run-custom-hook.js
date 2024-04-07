@@ -4,7 +4,7 @@ import * as GPX from '../gpx.js'
 import * as HOOK from '../trackfile-hook-sample.js';
 import * as TEST_COMMON from './test-common.js';
 
-const Filename = '/tmp/1.gpx';
+const Filename = '/tmp/20240404-1033到1204.kml';
 
 let ContentToTrackFile = undefined;
 let TrackFileToContent = undefined;
