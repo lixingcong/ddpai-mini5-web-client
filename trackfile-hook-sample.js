@@ -239,7 +239,7 @@ function convertTrackToLine(trackFile) {
 }
 
 /**
- * 按名字排序
+ * 按名字排序，不改变文件内容，只改排序
  */
 function sortByName(trackFile) {
     const cmp = (a, b) => a.name.localeCompare(b.name);
@@ -278,6 +278,7 @@ function removeIfContainTrack(trackFile) {
 
 /**
  * 分拆所有轨迹、线条
+ * 也就是将一个kml文件拆成多个kml文件，每个kml只有一个轨迹
  */
 function splitAllPaths(trackFile) {
     let ret =[];
