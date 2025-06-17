@@ -1,3 +1,7 @@
+# 已中止维护
+
+请查看基于Vue3的[重构版本](https://github.com/lixingcong/ddpai-mini5-gps-parser)
+
 # 导出记录仪中的轨迹到KML/GPX文件
 
 将本项目部署到某虚拟主机上，可以是github.io静态展示页，访问index.html即可。
